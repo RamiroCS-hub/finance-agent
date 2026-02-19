@@ -10,7 +10,7 @@
 | Fase 3 | ✅ | Sheets Service — extensión con delete y search |
 | Fase 4 | ✅ | Agent Core (memory, tools, reasoning loop) |
 | Fase 5 | ✅ | Limpieza: eliminar arquitectura vieja |
-| Fase 6 | ⬜ | Tests del agente |
+| Fase 6 | ✅ | Tests del agente |
 | Fase 7 | ⬜ | Deploy en producción con HTTPS |
 | Fase 8 | ⬜ | Refinamiento y UX |
 
@@ -276,7 +276,7 @@ El `llm_provider.py` actual expone solo `complete(system_prompt, user_message) -
 
 ---
 
-## Fase 6: Tests del Agente ⬜
+## Fase 6: Tests del Agente ✅
 
 **Objetivo**: Cubrir los componentes críticos del agente con tests.
 

@@ -82,6 +82,17 @@ PHONE = "5491123456789"
 # ---------------------------------------------------------------------------
 
 
+class TestAgentLoopEnsureUser:
+    def test_ensure_user_exception_does_not_crash(self, agent, mock_llm, mock_sheets):
+        """Si ensure_user lanza excepción, el agente continúa normalmente."""
+        mock_sheets.ensure_user.side_effect = Exception("Sheets no disponible")
+        mock_llm.chat_with_tools.return_value = stop_response("Hola.")
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert result == "Hola."  # el agente no crasheó
+
+
 class TestAgentLoopBasicFlow:
     def test_direct_stop_returns_llm_text(self, agent, mock_llm):
         """Cuando el LLM responde stop sin tools, retorna el texto directamente."""

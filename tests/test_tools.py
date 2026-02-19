@@ -265,6 +265,40 @@ class TestSearchExpenses:
 
 
 # ---------------------------------------------------------------------------
+# get_category_breakdown
+# ---------------------------------------------------------------------------
+
+
+class TestGetCategoryBreakdown:
+    def test_returns_breakdown_dict(self, registry):
+        """El resultado debe incluir 'breakdown' como dict."""
+        result = registry.run("get_category_breakdown")
+        assert "breakdown" in result
+        assert isinstance(result["breakdown"], dict)
+
+    def test_uses_current_month_when_not_specified(self, registry, mock_sheets):
+        """Sin argumentos, debe usar el mes y año actuales."""
+        from datetime import datetime
+        now = datetime.now()
+        registry.run("get_category_breakdown")
+        mock_sheets.get_category_totals.assert_called_once_with(
+            "5491123456789", now.month, now.year
+        )
+
+    def test_filters_by_specific_category(self, registry, mock_sheets):
+        """Con category explícita, devuelve solo esa categoría."""
+        result = registry.run("get_category_breakdown", category="Comida")
+        assert result["category"] == "Comida"
+        assert "Transporte" not in result["breakdown"]
+        assert "Comida" in result["breakdown"]
+
+    def test_without_category_returns_all(self, registry):
+        """Sin category, devuelve todas las categorías."""
+        result = registry.run("get_category_breakdown")
+        assert result["breakdown"] == {"Comida": 2000.0, "Transporte": 3000.0}
+
+
+# ---------------------------------------------------------------------------
 # get_sheet_url
 # ---------------------------------------------------------------------------
 

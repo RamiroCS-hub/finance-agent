@@ -40,5 +40,9 @@ class Settings:
     ]
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
+    # Agente
+    CONVERSATION_TTL_MINUTES: int = int(os.getenv("CONVERSATION_TTL_MINUTES", "60"))
+    MAX_AGENT_ITERATIONS: int = int(os.getenv("MAX_AGENT_ITERATIONS", "10"))
+
 
 settings = Settings()

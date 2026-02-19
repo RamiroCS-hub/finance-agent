@@ -1,29 +1,21 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
 import logging
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.config import settings
-from app.services.llm_provider import LLMProvider
-from app.services.router import route_message
-from app.services.sheets import SheetsService
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
-# Se inyectan desde main.py al iniciar la app
-_llm: LLMProvider | None = None
-_sheets: SheetsService | None = None
+# Inyectado desde main.py al iniciar la app
+_agent = None
 
 
-def init_dependencies(llm: LLMProvider, sheets: SheetsService) -> None:
-    global _llm, _sheets
-    _llm = llm
-    _sheets = sheets
+def init_dependencies(agent) -> None:
+    global _agent
+    _agent = agent
 
 
 @router.get("/webhook")
@@ -75,9 +67,13 @@ async def receive_message(request: Request):
 
     logger.info("Mensaje recibido de %s: %s", phone, text)
 
-    # Procesar el mensaje
+    # Procesar con el agente y responder
     try:
-        await route_message(phone, text, _llm, _sheets)
+        from app.services import whatsapp
+
+        reply = await _agent.process(phone, text)
+        if reply:
+            await whatsapp.send_text(phone, reply)
     except Exception as e:
         logger.error("Error procesando mensaje de %s: %s", phone, e, exc_info=True)
 

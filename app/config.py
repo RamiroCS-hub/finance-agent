@@ -27,7 +27,7 @@ class Settings:
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
     DEEPSEEK_MODEL: str = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     DEEPSEEK_BASE_URL: str = os.getenv(
-        "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
+        "DEEPSEEK_BASE_URL", "https://openrouter.ai/api/v1"
     )
     LLM_TIMEOUT_SECONDS: int = int(os.getenv("LLM_TIMEOUT_SECONDS", "5"))
 

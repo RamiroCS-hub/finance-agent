@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import logging
+import operator
 from datetime import datetime
 
 from app.models.agent import ToolDefinition
@@ -8,6 +10,39 @@ from app.models.expense import ParsedExpense
 from app.services.sheets import SheetsService
 
 logger = logging.getLogger(__name__)
+
+_SAFE_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def _eval_node(node: ast.AST) -> float:
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return float(node.value)
+    if isinstance(node, ast.BinOp):
+        op = _SAFE_OPS.get(type(node.op))
+        if op is None:
+            raise ValueError(f"Operador no soportado: {type(node.op).__name__}")
+        return op(_eval_node(node.left), _eval_node(node.right))
+    if isinstance(node, ast.UnaryOp):
+        op = _SAFE_OPS.get(type(node.op))
+        if op is None:
+            raise ValueError(f"Operador no soportado: {type(node.op).__name__}")
+        return op(_eval_node(node.operand))
+    raise ValueError(f"Expresión no permitida: {ast.dump(node)}")
+
+
+def safe_calc(expression: str) -> float:
+    """Evalúa una expresión aritmética de forma segura (sin eval)."""
+    tree = ast.parse(expression.strip(), mode="eval")
+    return _eval_node(tree.body)
 
 
 class ToolRegistry:
@@ -138,6 +173,13 @@ class ToolRegistry:
 
     def _get_sheet_url(self) -> dict:
         return {"url": self.sheets.get_sheet_url()}
+
+    def _calculate(self, expression: str) -> dict:
+        try:
+            result = safe_calc(expression)
+            return {"expression": expression, "result": round(result, 2)}
+        except Exception as e:
+            return {"error": f"No se pudo evaluar '{expression}': {e}"}
 
     # ------------------------------------------------------------------
     # Definiciones (nombre, descripción, JSON Schema)
@@ -278,5 +320,31 @@ class ToolRegistry:
                 ),
                 parameters={"type": "object", "properties": {}},
                 fn=self._get_sheet_url,
+            ),
+            ToolDefinition(
+                name="calculate",
+                description=(
+                    "Evalúa una expresión matemática y devuelve el resultado numérico. "
+                    "Usar SIEMPRE que el mensaje del usuario involucre cualquier cálculo: "
+                    "porcentajes, IVA, impuestos, sumas de varios montos, descuentos, "
+                    "propinas, divisiones entre personas, etc. "
+                    "Llamar ANTES de register_expense para obtener el monto correcto."
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "expression": {
+                            "type": "string",
+                            "description": (
+                                "Expresión aritmética pura con números y operadores "
+                                "(+, -, *, /, paréntesis). "
+                                "Ejemplos: '200 - 200 * 0.22', '(200 + 300 + 400) * 1.21', "
+                                "'1500 / 3', '850 * 1.03'"
+                            ),
+                        },
+                    },
+                    "required": ["expression"],
+                },
+                fn=self._calculate,
             ),
         ]

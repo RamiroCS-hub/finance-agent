@@ -49,9 +49,9 @@ def registry(mock_sheets):
 
 
 class TestDefinitions:
-    def test_returns_seven_tools(self, registry):
-        """ToolRegistry debe exponer exactamente 7 herramientas."""
-        assert len(registry.definitions()) == 7
+    def test_returns_eight_tools(self, registry):
+        """ToolRegistry debe exponer exactamente 8 herramientas."""
+        assert len(registry.definitions()) == 8
 
     def test_all_are_tool_definition_instances(self, registry):
         """Cada elemento debe ser un ToolDefinition."""
@@ -68,6 +68,7 @@ class TestDefinitions:
             "delete_last_expense",
             "search_expenses",
             "get_sheet_url",
+            "calculate",
         }
         assert names == expected
 

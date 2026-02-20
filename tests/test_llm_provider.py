@@ -236,47 +236,47 @@ class TestGeminiProviderChatWithTools:
 
 class TestDeepSeekProviderChatWithTools:
     def _make_provider(self, test_settings):
-        return DeepSeekProvider(test_settings)
+        with patch("app.services.llm_provider.OpenRouter"):
+            provider = DeepSeekProvider(test_settings)
+        provider.client = MagicMock()
+        return provider
 
-    def _mock_http_tool_use(self, tool_name: str, arguments: dict):
-        """Construye mock de respuesta HTTP estilo OpenAI con tool_calls."""
+    def _mock_tool_use_response(self, tool_name: str, arguments: dict):
+        """Construye mock de respuesta OpenRouter con tool_calls."""
+        mock_tc_fn = MagicMock()
+        mock_tc_fn.name = tool_name
+        mock_tc_fn.arguments = json.dumps(arguments)
+
+        mock_tc = MagicMock()
+        mock_tc.id = "call_abc123"
+        mock_tc.function = mock_tc_fn
+
+        mock_message = MagicMock()
+        mock_message.role = "assistant"
+        mock_message.content = None
+        mock_message.tool_calls = [mock_tc]
+
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_choice.finish_reason = "tool_calls"
+
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [
-                            {
-                                "id": "call_abc123",
-                                "type": "function",
-                                "function": {
-                                    "name": tool_name,
-                                    "arguments": json.dumps(arguments),
-                                },
-                            }
-                        ],
-                    },
-                    "finish_reason": "tool_calls",
-                }
-            ]
-        }
-        mock_response.raise_for_status = MagicMock()
+        mock_response.choices = [mock_choice]
         return mock_response
 
-    def _mock_http_stop(self, text: str):
-        """Construye mock de respuesta HTTP con texto puro."""
+    def _mock_stop_response(self, text: str):
+        """Construye mock de respuesta OpenRouter con texto puro."""
+        mock_message = MagicMock()
+        mock_message.role = "assistant"
+        mock_message.content = text
+        mock_message.tool_calls = None
+
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_choice.finish_reason = "stop"
+
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [
-                {
-                    "message": {"role": "assistant", "content": text},
-                    "finish_reason": "stop",
-                }
-            ]
-        }
-        mock_response.raise_for_status = MagicMock()
+        mock_response.choices = [mock_choice]
         return mock_response
 
     def test_tool_use_returns_correct_finish_reason(
@@ -284,23 +284,18 @@ class TestDeepSeekProviderChatWithTools:
     ):
         """Cuando DeepSeek devuelve tool_calls, finish_reason debe ser 'tool_use'."""
         provider = self._make_provider(test_settings)
-        mock_resp = self._mock_http_tool_use(
+        mock_resp = self._mock_tool_use_response(
             "register_expense", {"amount": 850, "description": "farmacia"}
         )
+        provider.client.chat.send_async = AsyncMock(return_value=mock_resp)
 
-        mock_post = AsyncMock(return_value=mock_resp)
-        mock_ctx = MagicMock()
-        mock_ctx.__aenter__ = AsyncMock(return_value=MagicMock(post=mock_post))
-        mock_ctx.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("httpx.AsyncClient", return_value=mock_ctx):
-            result = asyncio.run(
-                provider.chat_with_tools(
-                    messages=user_message,
-                    tools=[expense_tool],
-                    system_prompt="Sos un asistente de gastos.",
-                )
+        result = asyncio.run(
+            provider.chat_with_tools(
+                messages=user_message,
+                tools=[expense_tool],
+                system_prompt="Sos un asistente de gastos.",
             )
+        )
 
         assert result.finish_reason == "tool_use"
 
@@ -309,23 +304,18 @@ class TestDeepSeekProviderChatWithTools:
     ):
         """El ToolCall devuelto debe tener nombre, id y argumentos correctos."""
         provider = self._make_provider(test_settings)
-        mock_resp = self._mock_http_tool_use(
+        mock_resp = self._mock_tool_use_response(
             "register_expense", {"amount": 850.0, "description": "farmacia"}
         )
+        provider.client.chat.send_async = AsyncMock(return_value=mock_resp)
 
-        mock_post = AsyncMock(return_value=mock_resp)
-        mock_ctx = MagicMock()
-        mock_ctx.__aenter__ = AsyncMock(return_value=MagicMock(post=mock_post))
-        mock_ctx.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("httpx.AsyncClient", return_value=mock_ctx):
-            result = asyncio.run(
-                provider.chat_with_tools(
-                    messages=user_message,
-                    tools=[expense_tool],
-                    system_prompt="Sos un asistente de gastos.",
-                )
+        result = asyncio.run(
+            provider.chat_with_tools(
+                messages=user_message,
+                tools=[expense_tool],
+                system_prompt="Sos un asistente de gastos.",
             )
+        )
 
         assert result.tool_calls is not None
         tc = result.tool_calls[0]
@@ -336,21 +326,16 @@ class TestDeepSeekProviderChatWithTools:
     def test_stop_returns_text_content(self, test_settings, expense_tool):
         """Cuando DeepSeek no usa tools, finish_reason debe ser 'stop'."""
         provider = self._make_provider(test_settings)
-        mock_resp = self._mock_http_stop("Hola, ¿en qué te puedo ayudar?")
+        mock_resp = self._mock_stop_response("Hola, ¿en qué te puedo ayudar?")
+        provider.client.chat.send_async = AsyncMock(return_value=mock_resp)
 
-        mock_post = AsyncMock(return_value=mock_resp)
-        mock_ctx = MagicMock()
-        mock_ctx.__aenter__ = AsyncMock(return_value=MagicMock(post=mock_post))
-        mock_ctx.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("httpx.AsyncClient", return_value=mock_ctx):
-            result = asyncio.run(
-                provider.chat_with_tools(
-                    messages=[Message(role="user", content="hola")],
-                    tools=[expense_tool],
-                    system_prompt="Sos un asistente.",
-                )
+        result = asyncio.run(
+            provider.chat_with_tools(
+                messages=[Message(role="user", content="hola")],
+                tools=[expense_tool],
+                system_prompt="Sos un asistente.",
             )
+        )
 
         assert result.finish_reason == "stop"
         assert result.content == "Hola, ¿en qué te puedo ayudar?"
@@ -358,7 +343,8 @@ class TestDeepSeekProviderChatWithTools:
 
     def test_messages_to_openai_format_includes_system(self, test_settings):
         """El primer mensaje del formato OpenAI debe ser el system prompt."""
-        provider = self._make_provider(test_settings)
+        with patch("app.services.llm_provider.OpenRouter"):
+            provider = DeepSeekProvider(test_settings)
         messages = [Message(role="user", content="hola")]
         result = provider._messages_to_openai_format(messages, "Sos asistente.")
 
@@ -367,7 +353,8 @@ class TestDeepSeekProviderChatWithTools:
 
     def test_messages_to_openai_format_tool_result(self, test_settings):
         """Los tool results se convierten correctamente con tool_call_id."""
-        provider = self._make_provider(test_settings)
+        with patch("app.services.llm_provider.OpenRouter"):
+            provider = DeepSeekProvider(test_settings)
         messages = [
             Message(
                 role="tool",

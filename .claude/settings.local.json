@@ -14,7 +14,10 @@
       "Bash(venv/bin/python -m pytest:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(venv/bin/python:*)"
+      "Bash(venv/bin/python:*)",
+      "WebSearch",
+      "WebFetch(domain:www.chatondesk.com)",
+      "WebFetch(domain:developers.facebook.com)"
     ]
   }
 }

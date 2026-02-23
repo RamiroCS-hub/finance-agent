@@ -5,7 +5,6 @@ import logging
 from typing import Protocol
 
 from google import genai
-from openrouter import OpenRouter
 
 from app.config import Settings
 from app.models.agent import ChatResponse, Message, ToolCall, ToolDefinition
@@ -185,24 +184,40 @@ class GeminiProvider:
 
 
 class DeepSeekProvider:
-    """OpenRouter / DeepSeek — Usa el SDK oficial de OpenRouter."""
+    """Azure OpenAI / DeepSeek — Usa llamadas HTTP directas."""
 
     def __init__(self, config: Settings) -> None:
         self.model = config.DEEPSEEK_MODEL
-        self.client = OpenRouter(api_key=config.DEEPSEEK_API_KEY)
+        self.base_url = config.DEEPSEEK_BASE_URL
+        self.api_key = config.DEEPSEEK_API_KEY
 
     async def complete(self, system_prompt: str, user_message: str) -> str:
-        response = await self.client.chat.send_async(
-            model=self.model,
-            messages=[
+        import httpx
+
+        headers = {
+            "api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            temperature=0.1,
-            response_format={"type": "json_object"},
-            stream=False,
-        )
-        return response.choices[0].message.content or ""
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self.base_url,
+                headers=headers,
+                json=payload,
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"] or ""
 
     async def chat_with_tools(
         self,
@@ -210,34 +225,49 @@ class DeepSeekProvider:
         tools: list[ToolDefinition],
         system_prompt: str,
     ) -> ChatResponse:
+        import httpx
+
         openai_messages = self._messages_to_openai_format(messages, system_prompt)
         openai_tools = self._build_openai_tools(tools)
 
-        response = await self.client.chat.send_async(
-            model=self.model,
-            messages=openai_messages,
-            tools=openai_tools,
-            temperature=0.1,
-            stream=False,
-        )
+        headers = {
+            "api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": openai_messages,
+            "tools": openai_tools,
+            "temperature": 0.1,
+        }
 
-        choice = response.choices[0]
-        message = choice.message
-        finish_reason = choice.finish_reason or "stop"
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self.base_url,
+                headers=headers,
+                json=payload,
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        if finish_reason == "tool_calls" or message.tool_calls:
+        choice = data["choices"][0]
+        message = choice["message"]
+        finish_reason = choice.get("finish_reason", "stop")
+
+        if finish_reason == "tool_calls" or message.get("tool_calls"):
             tool_calls = [
                 ToolCall(
-                    id=tc.id,
-                    name=tc.function.name,
-                    arguments=json.loads(tc.function.arguments),
+                    id=tc["id"],
+                    name=tc["function"]["name"],
+                    arguments=json.loads(tc["function"]["arguments"]),
                 )
-                for tc in (message.tool_calls or [])
+                for tc in (message.get("tool_calls") or [])
             ]
             return ChatResponse(content=None, tool_calls=tool_calls, finish_reason="tool_use")
 
         return ChatResponse(
-            content=message.content,
+            content=message.get("content"),
             tool_calls=None,
             finish_reason="stop",
         )

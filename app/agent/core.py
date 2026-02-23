@@ -37,11 +37,19 @@ de gasto, usá la misma categoría y poné el nombre como observación. Ejemplos
 y register_expense(10000, "uber - SANTI", "Transporte")
   · "500 juan 300 almuerzo" → categoría Comida para ambos. register_expense(300, "almuerzo", "Comida") \
 y register_expense(500, "almuerzo - JUAN", "Comida")
-- Para resúmenes, totales o "cuánto gasté" → get_monthly_summary.
+- RESÚMENES: Para resúmenes, totales o "cuánto gasté" → get_monthly_summary. Si el usuario NO \
+especifica el mes, el sistema usa el mes anterior automáticamente si estamos antes del día 15 \
+del mes actual, o el mes actual si ya pasó el día 15. No necesitás llamar con parámetros.
 - Para ver los últimos gastos → get_recent_expenses.
 - Para buscar un gasto específico → search_expenses.
 - Para borrar el último gasto → delete_last_expense.
 - Para el link de la planilla → get_sheet_url.
+- Para mandar una foto de gatito → send_cat_pic.
+- MONEDAS EXTRANJERAS: Si el usuario menciona un monto en USD, UYU, CLP o COP:
+  1. Llamá convert_currency para obtener el equivalente en ARS
+  2. Llamá register_expense con el monto en ARS, y pasá original_amount y original_currency 
+     con los valores originales para que queden registrados en la planilla
+  3. Informá al usuario ambos valores (original y convertido)
 
 FORMATO:
 - Respondé siempre en español, de forma concisa y amigable.
@@ -68,9 +76,16 @@ class AgentLoop:
         self.memory = memory
         self.max_iterations = max_iterations
 
-    async def process(self, phone: str, user_text: str) -> str:
+    async def process(
+        self,
+        phone: str,
+        user_text: str,
+        replied_to_id: str | None = None,
+    ) -> str:
         """
         Procesa un mensaje del usuario y retorna la respuesta del agente.
+        Si replied_to_id está presente, busca el texto del mensaje referenciado
+        y lo antepone al mensaje del usuario para que el LLM tenga contexto del reply.
         Actualiza el historial de conversación en memoria.
         """
         # Registrar usuario si es nuevo (operación rápida con caché de gspread)
@@ -79,6 +94,19 @@ class AgentLoop:
                 self.sheets.ensure_user(phone)
             except Exception as e:
                 logger.warning("Error en ensure_user para %s: %s", phone, e)
+
+        # Si el usuario respondió a un mensaje específico del bot, inyectar contexto
+        if replied_to_id:
+            referenced = self.memory.get_by_wamid(phone, replied_to_id)
+            if referenced:
+                # Truncar el mensaje referenciado para no inflar el contexto
+                preview = referenced[:200] + "..." if len(referenced) > 200 else referenced
+                user_text = f'[En respuesta a: "{preview}"]\n{user_text}'
+                logger.debug("Reply detectado para %s → referencia: %s", phone, replied_to_id)
+            else:
+                logger.debug(
+                    "Reply con wamid %s no encontrado en memoria para %s", replied_to_id, phone
+                )
 
         messages = self.memory.get(phone) + [Message(role="user", content=user_text)]
         tools = ToolRegistry(self.sheets, phone)

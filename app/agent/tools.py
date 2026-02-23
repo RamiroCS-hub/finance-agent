@@ -88,6 +88,8 @@ class ToolRegistry:
         description: str,
         category: str = "General",
         currency: str | None = None,
+        original_amount: float | None = None,
+        original_currency: str | None = None,
     ) -> dict:
         from app.config import settings
 
@@ -98,6 +100,8 @@ class ToolRegistry:
             currency=currency or settings.DEFAULT_CURRENCY,
             raw_message=f"{amount} {description}",
             source="agent",
+            original_amount=original_amount,
+            original_currency=original_currency,
         )
         row_index = self.sheets.append_expense(self.phone, expense)
         if row_index:
@@ -117,8 +121,18 @@ class ToolRegistry:
         year: int | None = None,
     ) -> dict:
         now = datetime.now()
-        month = int(month) if month else now.month
-        year = int(year) if year else now.year
+        # Si no se especifica mes, usar mes anterior si estamos antes del día 15
+        if month is None:
+            if now.day < 15:
+                month = now.month - 1 if now.month > 1 else 12
+                year = now.year if now.month > 1 else now.year - 1
+            else:
+                month = now.month
+                year = now.year
+        else:
+            month = int(month)
+            year = int(year) if year else now.year
+        
         total = self.sheets.get_monthly_total(self.phone, month, year)
         categories = self.sheets.get_category_totals(self.phone, month, year)
         return {
@@ -135,8 +149,18 @@ class ToolRegistry:
         category: str | None = None,
     ) -> dict:
         now = datetime.now()
-        month = int(month) if month else now.month
-        year = int(year) if year else now.year
+        # Si no se especifica mes, usar mes anterior si estamos antes del día 15
+        if month is None:
+            if now.day < 15:
+                month = now.month - 1 if now.month > 1 else 12
+                year = now.year if now.month > 1 else now.year - 1
+            else:
+                month = now.month
+                year = now.year
+        else:
+            month = int(month)
+            year = int(year) if year else now.year
+        
         categories = self.sheets.get_category_totals(self.phone, month, year)
         if category:
             filtered = {k: v for k, v in categories.items() if k.lower() == category.lower()}
@@ -181,6 +205,43 @@ class ToolRegistry:
         except Exception as e:
             return {"error": f"No se pudo evaluar '{expression}': {e}"}
 
+    def _convert_currency(
+        self,
+        amount: float,
+        from_currency: str,
+        to_currency: str = "ARS",
+    ) -> dict:
+        from app.services import currency
+
+        amount_destiny, rate = currency.convert_to_another_currency(amount, from_currency, to_currency)
+        return {
+            "original_amount": amount,
+            "original_currency": from_currency.upper(),
+            "converted_amount": round(amount_destiny, 2),
+            "target_currency": to_currency.upper(),
+            "exchange_rate": rate,
+        }
+
+    def _send_cat_pic(self) -> dict:
+        import httpx
+        from app.services import whatsapp
+
+        cat_api_url = "https://api.thecatapi.com/v1/images/search?mime_types=jpg,png"
+        try:
+            with httpx.Client() as client:
+                response = client.get(cat_api_url, timeout=10.0)
+                response.raise_for_status()
+                data = response.json()
+                pic_url = data[0]["url"]
+        except Exception as e:
+            logger.error("Error obteniendo foto de TheCatAPI: %s", e)
+            return {"success": False, "error": f"No se pudo obtener la foto: {e}"}
+
+        wamid = whatsapp.send_image_sync(self.phone, pic_url)
+        if wamid:
+            return {"success": True, "pic_url": pic_url, "wamid": wamid}
+        return {"success": False, "error": "No se pudo enviar la foto por WhatsApp"}
+
     # ------------------------------------------------------------------
     # Definiciones (nombre, descripción, JSON Schema)
     # ------------------------------------------------------------------
@@ -216,6 +277,14 @@ class ToolRegistry:
                             "type": "string",
                             "description": "Moneda (ARS, USD, EUR). Default: moneda configurada.",
                         },
+                        "original_amount": {
+                            "type": "number",
+                            "description": "Monto original antes de conversión (si fue convertido desde otra moneda)",
+                        },
+                        "original_currency": {
+                            "type": "string",
+                            "description": "Moneda original antes de conversión (si fue convertido)",
+                        },
                     },
                     "required": ["amount", "description"],
                 },
@@ -225,6 +294,8 @@ class ToolRegistry:
                 name="get_monthly_summary",
                 description=(
                     "Obtiene el total de gastos y el desglose por categoría de un mes. "
+                    "Si no se especifica mes, usa el mes anterior si estamos antes del día 15, "
+                    "o el mes actual si estamos después del día 15. "
                     "Usar cuando el usuario pide 'resumen', 'cuánto gasté', 'total del mes'."
                 ),
                 parameters={
@@ -232,7 +303,7 @@ class ToolRegistry:
                     "properties": {
                         "month": {
                             "type": "integer",
-                            "description": "Mes (1-12). Default: mes actual.",
+                            "description": "Mes (1-12). Default: inteligente según día del mes.",
                         },
                         "year": {
                             "type": "integer",
@@ -246,12 +317,14 @@ class ToolRegistry:
                 name="get_category_breakdown",
                 description=(
                     "Obtiene el desglose detallado por categoría. "
+                    "Si no se especifica mes, usa el mes anterior si estamos antes del día 15, "
+                    "o el mes actual si estamos después del día 15. "
                     "Usar cuando el usuario pide 'por categoría', 'desglose', o una categoría específica."
                 ),
                 parameters={
                     "type": "object",
                     "properties": {
-                        "month": {"type": "integer", "description": "Mes (1-12). Default: mes actual."},
+                        "month": {"type": "integer", "description": "Mes (1-12). Default: inteligente según día del mes."},
                         "year": {"type": "integer", "description": "Año. Default: año actual."},
                         "category": {
                             "type": "string",
@@ -346,5 +419,45 @@ class ToolRegistry:
                     "required": ["expression"],
                 },
                 fn=self._calculate,
+            ),
+            ToolDefinition(
+                name="convert_currency",
+                description=(
+                    "Convierte un monto de moneda extranjera a la moneda de destino. "
+                    "Usar cuando el usuario mencione un gasto en moneda extranjera. "
+                    "Llamar ANTES de register_expense para obtener el monto en la moneda de destino. "
+                    "Por defecto, la moneda de destino es ARS."
+                    "Si el usuario no especifica la moneda de destino, se usa ARS."
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "amount": {
+                            "type": "number",
+                            "description": "Monto en la moneda origen",
+                        },
+                        "from_currency": {
+                            "type": "string",
+                            "description": "Código de moneda: USD, UYU, CLP, COP",
+                        },
+                        "to_currency": {
+                            "type": "string",
+                            "description": "Código de moneda de destino: USD, UYU, CLP, COP, ARS",
+                            "default": "ARS",
+                        },
+                    },
+                    "required": ["amount", "from_currency", "to_currency"],
+                },
+                fn=self._convert_currency,
+            ),
+            ToolDefinition(
+                name="send_cat_pic",
+                description=(
+                    "Obtiene una foto aleatoria de un gatito desde internet y la envía "
+                    "por WhatsApp al usuario. Usar cuando el usuario pida una foto, imagen "
+                    "o gif de gato, gatito, minino, o cualquier imagen de felinos."
+                ),
+                parameters={"type": "object", "properties": {}},
+                fn=self._send_cat_pic,
             ),
         ]

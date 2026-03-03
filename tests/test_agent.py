@@ -102,6 +102,31 @@ class TestAgentLoopBasicFlow:
 
         assert result == "Hola, ¿en qué te puedo ayudar?"
 
+    def test_strip_thinking_tags(self, agent, mock_llm):
+        """Verifica que si el LLM devuelve tags <think> (modelos razonadores), se eliminen de la respuesta final."""
+        mock_llm.chat_with_tools.return_value = stop_response(
+            "<think>\nThis is a thinking process.\nWe should just say hi.\n</think>\nHola, ¿en qué te puedo ayudar?"
+        )
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert result == "Hola, ¿en qué te puedo ayudar?"
+        # Verificar también que en la memoria se guarde sin el think tag
+        memory = agent.memory.get(PHONE)
+        assert memory[-1].role == "assistant"
+        assert memory[-1].content == "Hola, ¿en qué te puedo ayudar?"
+
+    def test_strip_thinking_tags_prevents_text_concatenation(self, agent, mock_llm):
+        """Verifica que texto antes/después de <think> no se pegue sin espacios."""
+        mock_llm.chat_with_tools.return_value = stop_response(
+            "Texto1<think>razonamiento intermedio</think>Texto2"
+        )
+
+        result = asyncio.run(agent.process(PHONE, "test"))
+
+        # Debe quedar "Texto1 Texto2" (con espacio), no "Texto1Texto2"
+        assert result == "Texto1 Texto2"
+
     def test_tool_use_then_stop_returns_final_text(self, agent, mock_llm):
         """LLM llama a una tool y luego responde con texto; retorna el texto final."""
         mock_llm.chat_with_tools.side_effect = [

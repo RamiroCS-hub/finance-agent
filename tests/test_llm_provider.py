@@ -236,58 +236,62 @@ class TestGeminiProviderChatWithTools:
 
 class TestDeepSeekProviderChatWithTools:
     def _make_provider(self, test_settings):
-        with patch("app.services.llm_provider.OpenRouter"):
-            provider = DeepSeekProvider(test_settings)
-        provider.client = MagicMock()
-        return provider
+        return DeepSeekProvider(test_settings)
 
     def _mock_tool_use_response(self, tool_name: str, arguments: dict):
-        """Construye mock de respuesta OpenRouter con tool_calls."""
-        mock_tc_fn = MagicMock()
-        mock_tc_fn.name = tool_name
-        mock_tc_fn.arguments = json.dumps(arguments)
-
-        mock_tc = MagicMock()
-        mock_tc.id = "call_abc123"
-        mock_tc.function = mock_tc_fn
-
-        mock_message = MagicMock()
-        mock_message.role = "assistant"
-        mock_message.content = None
-        mock_message.tool_calls = [mock_tc]
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-        mock_choice.finish_reason = "tool_calls"
-
+        """Construye mock de respuesta de HTTPX con tool_calls."""
         mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
+        mock_response.json.return_value = {
+            "choices": [
+                {
+                    "finish_reason": "tool_calls",
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": "call_abc123",
+                                "type": "function",
+                                "function": {
+                                    "name": tool_name,
+                                    "arguments": json.dumps(arguments),
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
         return mock_response
 
     def _mock_stop_response(self, text: str):
-        """Construye mock de respuesta OpenRouter con texto puro."""
-        mock_message = MagicMock()
-        mock_message.role = "assistant"
-        mock_message.content = text
-        mock_message.tool_calls = None
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-        mock_choice.finish_reason = "stop"
-
+        """Construye mock de respuesta HTTPX con texto puro."""
         mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
+        mock_response.json.return_value = {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "role": "assistant",
+                        "content": text,
+                    }
+                }
+            ]
+        }
         return mock_response
 
+    @patch("httpx.AsyncClient")
     def test_tool_use_returns_correct_finish_reason(
-        self, test_settings, expense_tool, user_message
+        self, mock_client_class, test_settings, expense_tool, user_message
     ):
         """Cuando DeepSeek devuelve tool_calls, finish_reason debe ser 'tool_use'."""
         provider = self._make_provider(test_settings)
         mock_resp = self._mock_tool_use_response(
             "register_expense", {"amount": 850, "description": "farmacia"}
         )
-        provider.client.chat.send_async = AsyncMock(return_value=mock_resp)
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_resp
+        mock_client_class.return_value.__aenter__.return_value = mock_client
 
         result = asyncio.run(
             provider.chat_with_tools(
@@ -299,15 +303,18 @@ class TestDeepSeekProviderChatWithTools:
 
         assert result.finish_reason == "tool_use"
 
+    @patch("httpx.AsyncClient")
     def test_tool_use_returns_correct_tool_call(
-        self, test_settings, expense_tool, user_message
+        self, mock_client_class, test_settings, expense_tool, user_message
     ):
         """El ToolCall devuelto debe tener nombre, id y argumentos correctos."""
         provider = self._make_provider(test_settings)
         mock_resp = self._mock_tool_use_response(
             "register_expense", {"amount": 850.0, "description": "farmacia"}
         )
-        provider.client.chat.send_async = AsyncMock(return_value=mock_resp)
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_resp
+        mock_client_class.return_value.__aenter__.return_value = mock_client
 
         result = asyncio.run(
             provider.chat_with_tools(
@@ -323,11 +330,16 @@ class TestDeepSeekProviderChatWithTools:
         assert tc.name == "register_expense"
         assert tc.arguments["amount"] == 850.0
 
-    def test_stop_returns_text_content(self, test_settings, expense_tool):
+    @patch("httpx.AsyncClient")
+    def test_stop_returns_text_content(
+        self, mock_client_class, test_settings, expense_tool
+    ):
         """Cuando DeepSeek no usa tools, finish_reason debe ser 'stop'."""
         provider = self._make_provider(test_settings)
         mock_resp = self._mock_stop_response("Hola, ¿en qué te puedo ayudar?")
-        provider.client.chat.send_async = AsyncMock(return_value=mock_resp)
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_resp
+        mock_client_class.return_value.__aenter__.return_value = mock_client
 
         result = asyncio.run(
             provider.chat_with_tools(
@@ -343,8 +355,7 @@ class TestDeepSeekProviderChatWithTools:
 
     def test_messages_to_openai_format_includes_system(self, test_settings):
         """El primer mensaje del formato OpenAI debe ser el system prompt."""
-        with patch("app.services.llm_provider.OpenRouter"):
-            provider = DeepSeekProvider(test_settings)
+        provider = DeepSeekProvider(test_settings)
         messages = [Message(role="user", content="hola")]
         result = provider._messages_to_openai_format(messages, "Sos asistente.")
 
@@ -353,8 +364,7 @@ class TestDeepSeekProviderChatWithTools:
 
     def test_messages_to_openai_format_tool_result(self, test_settings):
         """Los tool results se convierten correctamente con tool_call_id."""
-        with patch("app.services.llm_provider.OpenRouter"):
-            provider = DeepSeekProvider(test_settings)
+        provider = DeepSeekProvider(test_settings)
         messages = [
             Message(
                 role="tool",

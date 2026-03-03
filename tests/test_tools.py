@@ -6,7 +6,7 @@ y que retorne el formato esperado.
 """
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 
@@ -49,9 +49,9 @@ def registry(mock_sheets):
 
 
 class TestDefinitions:
-    def test_returns_eight_tools(self, registry):
-        """ToolRegistry debe exponer exactamente 8 herramientas."""
-        assert len(registry.definitions()) == 8
+    def test_returns_ten_tools(self, registry):
+        """ToolRegistry debe exponer exactamente 11 herramientas."""
+        assert len(registry.definitions()) == 12
 
     def test_all_are_tool_definition_instances(self, registry):
         """Cada elemento debe ser un ToolDefinition."""
@@ -69,6 +69,10 @@ class TestDefinitions:
             "search_expenses",
             "get_sheet_url",
             "calculate",
+            "convert_currency",
+            "send_cat_pic",
+            "get_user_groups_info",
+            "save_personality",
         }
         assert names == expected
 
@@ -107,37 +111,49 @@ class TestRun:
 
 
 class TestRegisterExpense:
-    def test_calls_append_expense(self, registry, mock_sheets):
+    @pytest.fixture(autouse=True)
+    def mock_db(self):
+        with patch("app.db.database.async_session_maker") as mock_session:
+            session_instance = AsyncMock()
+            mock_session.return_value.__aenter__.return_value = session_instance
+            yield mock_session
+    @pytest.mark.asyncio
+    async def test_calls_append_expense(self, registry, mock_sheets):
         """register_expense debe llamar a sheets.append_expense."""
-        registry.run("register_expense", amount=850.0, description="farmacia")
+        await registry.run("register_expense", amount=850.0, description="farmacia")
         mock_sheets.append_expense.assert_called_once()
 
-    def test_returns_success_true(self, registry):
+    @pytest.mark.asyncio
+    async def test_returns_success_true(self, registry):
         """Cuando append_expense retorna row_index > 0, success debe ser True."""
-        result = registry.run("register_expense", amount=850.0, description="farmacia")
+        result = await registry.run("register_expense", amount=850.0, description="farmacia")
         assert result["success"] is True
 
-    def test_returns_row_index(self, registry):
+    @pytest.mark.asyncio
+    async def test_returns_row_index(self, registry):
         """El resultado debe incluir el row_index retornado por append_expense."""
-        result = registry.run("register_expense", amount=850.0, description="farmacia")
+        result = await registry.run("register_expense", amount=850.0, description="farmacia")
         assert result["row_index"] == 3
 
-    def test_uses_default_category_when_not_provided(self, registry, mock_sheets):
+    @pytest.mark.asyncio
+    async def test_uses_default_category_when_not_provided(self, registry, mock_sheets):
         """Si no se proporciona categoría, debe usar 'General'."""
-        registry.run("register_expense", amount=100.0, description="misc")
+        await registry.run("register_expense", amount=100.0, description="misc")
         expense_arg = mock_sheets.append_expense.call_args[0][1]
         assert expense_arg.category == "General"
 
-    def test_uses_provided_category(self, registry, mock_sheets):
+    @pytest.mark.asyncio
+    async def test_uses_provided_category(self, registry, mock_sheets):
         """Si se proporciona categoría, debe usarla."""
-        registry.run("register_expense", amount=500.0, description="uber", category="Transporte")
+        await registry.run("register_expense", amount=500.0, description="uber", category="Transporte")
         expense_arg = mock_sheets.append_expense.call_args[0][1]
         assert expense_arg.category == "Transporte"
 
-    def test_returns_failure_when_append_returns_zero(self, registry, mock_sheets):
+    @pytest.mark.asyncio
+    async def test_returns_failure_when_append_returns_zero(self, registry, mock_sheets):
         """Si append_expense retorna 0 (error), success debe ser False."""
         mock_sheets.append_expense.return_value = 0
-        result = registry.run("register_expense", amount=100.0, description="test")
+        result = await registry.run("register_expense", amount=100.0, description="test")
         assert result["success"] is False
 
 
@@ -159,13 +175,16 @@ class TestGetMonthlySummary:
         assert "categories" in result
         assert isinstance(result["categories"], dict)
 
-    def test_uses_current_month_when_not_specified(self, registry, mock_sheets):
+    @patch("app.agent.tools.datetime")
+    def test_uses_current_month_when_not_specified(self, mock_datetime, registry, mock_sheets):
         """Sin argumentos, debe usar el mes y año actuales."""
         from datetime import datetime
-        now = datetime.now()
+        mock_now = datetime(2026, 3, 20)
+        mock_datetime.now.return_value = mock_now
+        
         registry.run("get_monthly_summary")
         mock_sheets.get_monthly_total.assert_called_once_with(
-            "5491123456789", now.month, now.year
+            "5491123456789", 3, 2026
         )
 
     def test_uses_provided_month_year(self, registry, mock_sheets):
@@ -277,13 +296,16 @@ class TestGetCategoryBreakdown:
         assert "breakdown" in result
         assert isinstance(result["breakdown"], dict)
 
-    def test_uses_current_month_when_not_specified(self, registry, mock_sheets):
+    @patch("app.agent.tools.datetime")
+    def test_uses_current_month_when_not_specified(self, mock_datetime, registry, mock_sheets):
         """Sin argumentos, debe usar el mes y año actuales."""
         from datetime import datetime
-        now = datetime.now()
+        mock_now = datetime(2026, 3, 20)
+        mock_datetime.now.return_value = mock_now
+
         registry.run("get_category_breakdown")
         mock_sheets.get_category_totals.assert_called_once_with(
-            "5491123456789", now.month, now.year
+            "5491123456789", 3, 2026
         )
 
     def test_filters_by_specific_category(self, registry, mock_sheets):

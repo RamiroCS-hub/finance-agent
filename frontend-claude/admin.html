@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Waitlist Tesorero</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #25D366;
+      --green-dark: #128C7E;
+      --green-darker: #075E54;
+      --bg: #f9fafb;
+      --white: #ffffff;
+      --text: #1a1a2e;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 24px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .back-link {
+      font-size: 0.85rem;
+      color: var(--green-dark);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--green-dark);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-export {
+      background: var(--green);
+      color: white;
+    }
+    .btn-export:hover { background: var(--green-dark); }
+
+    .btn-clear {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .btn-clear:hover { background: #fecaca; }
+
+    .btn-refresh {
+      background: #e0f2fe;
+      color: #0284c7;
+    }
+    .btn-refresh:hover { background: #bae6fd; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    thead {
+      background: var(--green-darker);
+      color: var(--white);
+    }
+
+    th {
+      padding: 14px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: #f0fdf4; }
+
+    .email-cell {
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #dc2626;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .delete-btn:hover { background: #fee2e2; }
+
+    @media (max-width: 600px) {
+      .stats { flex-direction: column; }
+      .actions { flex-wrap: wrap; }
+      .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💰 Waitlist Admin</h1>
+      <a href="index.html" class="back-link">← Volver a la landing</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-number" id="total-count">0</div>
+        <div class="stat-label">Total inscriptos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="today-count">0</div>
+        <div class="stat-label">Hoy</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="gmail-count">0</div>
+        <div class="stat-label">Gmail</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-export" onclick="exportCSV()">Exportar CSV</button>
+      <button class="btn btn-refresh" onclick="refresh()">Refrescar</button>
+      <button class="btn btn-clear" onclick="clearAll()">Borrar todo</button>
+    </div>
+
+    <div id="table-container"></div>
+  </div>
+
+  <script>
+    var STORAGE_KEY = 'waitlist_submissions';
+
+    function getSubmissions() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch (e) { return []; }
+    }
+
+    function saveSubmissions(subs) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
+    }
+
+    function render() {
+      var subs = getSubmissions();
+      var container = document.getElementById('table-container');
+
+      // Stats
+      document.getElementById('total-count').textContent = subs.length;
+
+      var today = new Date().toISOString().slice(0, 10);
+      var todayCount = subs.filter(function(s) {
+        return s.timestamp && s.timestamp.slice(0, 10) === today;
+      }).length;
+      document.getElementById('today-count').textContent = todayCount;
+
+      var gmailCount = subs.filter(function(s) {
+        return s.email && s.email.endsWith('@gmail.com');
+      }).length;
+      document.getElementById('gmail-count').textContent = gmailCount;
+
+      if (subs.length === 0) {
+        container.innerHTML =
+          '<div class="empty-state">' +
+          '<p>No hay inscriptos todavía. Comparti la landing para sumar gente.</p>' +
+          '</div>';
+        return;
+      }
+
+      var html = '<table><thead><tr>' +
+        '<th>#</th><th>Email</th><th>Fecha</th><th></th>' +
+        '</tr></thead><tbody>';
+
+      // Show newest first
+      var reversed = subs.slice().reverse();
+      for (var i = 0; i < reversed.length; i++) {
+        var s = reversed[i];
+        var date = s.timestamp ? new Date(s.timestamp) : null;
+        var dateStr = date
+          ? date.toLocaleDateString('es-AR') + ' ' + date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+          : '-';
+        var originalIndex = subs.length - 1 - i;
+
+        html += '<tr>' +
+          '<td>' + (i + 1) + '</td>' +
+          '<td class="email-cell">' + escapeHtml(s.email || '-') + '</td>' +
+          '<td>' + dateStr + '</td>' +
+          '<td><button class="delete-btn" onclick="deleteOne(' + originalIndex + ')">Eliminar</button></td>' +
+          '</tr>';
+      }
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function deleteOne(index) {
+      if (!confirm('Eliminar este email de la waitlist?')) return;
+      var subs = getSubmissions();
+      subs.splice(index, 1);
+      saveSubmissions(subs);
+      render();
+    }
+
+    function exportCSV() {
+      var subs = getSubmissions();
+      if (subs.length === 0) { alert('No hay datos para exportar.'); return; }
+
+      var csv = 'Email,Fecha\n';
+      for (var i = 0; i < subs.length; i++) {
+        var s = subs[i];
+        csv += '"' + (s.email || '') + '","' + (s.timestamp || '') + '"\n';
+      }
+
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'waitlist_tesorero_' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+      var subs = getSubmissions();
+      if (subs.length === 0) return;
+      if (!confirm('Borrar TODOS los ' + subs.length + ' inscriptos? Esta acción no se puede deshacer.')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      render();
+    }
+
+    function refresh() { render(); }
+
+    // Init
+    render();
+  </script>
+</body>
+</html>

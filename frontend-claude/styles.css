@@ -445,6 +445,10 @@ a { text-decoration: none; color: inherit; }
   box-shadow: var(--shadow-lg), 0 0 0 8px rgba(255,255,255,0.1);
 }
 
+.groups-visual .chat-bubble {
+  color: var(--text);
+}
+
 /* ---- How it works ---- */
 .how-it-works {
   padding: 100px 0;

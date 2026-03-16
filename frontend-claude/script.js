@@ -2,29 +2,40 @@
    Tesorero Landing — Waitlist Logic
    ======================================== */
 
-var STORAGE_KEY = 'waitlist_submissions';
+var WAITLIST_ENDPOINT = 'https://formsubmit.co/ajax/ramirocarnicersouble8@gmail.com';
 
 // ---- Helpers ----
 
-function getSubmissions() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveSubmissions(submissions) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(submissions));
-}
-
-function updateCount() {
-  var el = document.getElementById('submissions-count');
-  if (el) el.textContent = getSubmissions().length;
-}
-
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function submitToWaitlist(email) {
+  var body = new FormData();
+  body.append('email', email);
+  body.append('_replyto', email);
+  body.append('_subject', 'Nueva inscripcion en la waitlist de Tesorero');
+  body.append('_template', 'table');
+  body.append('_captcha', 'false');
+  body.append('origen', window.location.href);
+  body.append('user_agent', navigator.userAgent || '');
+
+  return fetch(WAITLIST_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json'
+    },
+    body: body
+  }).then(function (response) {
+    return response.json().catch(function () { return {}; }).then(function (data) {
+      var failed = !response.ok || data.success === false || data.success === 'false';
+      if (failed) {
+        var message = data && data.message ? data.message : 'No se pudo enviar tu inscripcion.';
+        throw new Error(message);
+      }
+      return data;
+    });
+  });
 }
 
 // ---- Waitlist Form ----
@@ -32,8 +43,6 @@ function isValidEmail(email) {
 function initWaitlistForm() {
   var form = document.getElementById('waitlist-form');
   if (!form) return;
-
-  updateCount();
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -55,33 +64,22 @@ function initWaitlistForm() {
       return;
     }
 
-    // Check duplicates
-    var submissions = getSubmissions();
-    if (submissions.some(function (s) { return s.email === email; })) {
-      errorDiv.textContent = 'Este email ya está en la waitlist.';
-      errorDiv.hidden = false;
-      return;
-    }
-
-    // Simulate saving (tiny delay for UX)
     btnText.hidden = true;
     btnLoading.hidden = false;
 
-    setTimeout(function () {
-      submissions.push({
-        email: email,
-        timestamp: new Date().toISOString(),
+    submitToWaitlist(email)
+      .then(function () {
+        form.hidden = true;
+        successDiv.hidden = false;
+      })
+      .catch(function (error) {
+        errorDiv.textContent = error.message || 'No se pudo guardar tu email.';
+        errorDiv.hidden = false;
+      })
+      .finally(function () {
+        btnText.hidden = false;
+        btnLoading.hidden = true;
       });
-      saveSubmissions(submissions);
-      updateCount();
-
-      // Show success, hide form
-      form.hidden = true;
-      successDiv.hidden = false;
-
-      btnText.hidden = false;
-      btnLoading.hidden = true;
-    }, 600);
   });
 }
 

@@ -156,7 +156,7 @@ function initScrollAnimations() {
   );
 
   document.querySelectorAll(
-    '.feature-card, .step, .demo-card, .waitlist-card'
+    '.feature-card, .step, .demo-card, .waitlist-card, .groups-feature-item, .groups-visual'
   ).forEach(function (el) {
     el.classList.add('animate-on-scroll');
     observer.observe(el);

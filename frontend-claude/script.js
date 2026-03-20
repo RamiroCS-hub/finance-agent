@@ -1,5 +1,5 @@
 /* ========================================
-   Tesorero Landing — Waitlist Logic
+   Anotamelo Landing — Waitlist Logic
    ======================================== */
 
 var WAITLIST_ENDPOINT = 'https://formsubmit.co/ajax/ramirocarnicersouble8@gmail.com';
@@ -14,7 +14,7 @@ function submitToWaitlist(email) {
   var body = new FormData();
   body.append('email', email);
   body.append('_replyto', email);
-  body.append('_subject', 'Nueva inscripcion en la waitlist de Tesorero');
+  body.append('_subject', 'Nueva inscripcion en la waitlist de Anotamelo');
   body.append('_template', 'table');
   body.append('_captcha', 'false');
   body.append('origen', window.location.href);
@@ -154,7 +154,7 @@ function initScrollAnimations() {
   );
 
   document.querySelectorAll(
-    '.feature-card, .step, .demo-card, .waitlist-card, .groups-feature-item, .groups-visual'
+    '.feature-card, .step, .demo-card, .waitlist-card, .fh-card, .edu-item, .group-feat, .groups-feature-item, .groups-visual'
   ).forEach(function (el) {
     el.classList.add('animate-on-scroll');
     observer.observe(el);

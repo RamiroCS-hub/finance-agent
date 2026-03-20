@@ -21,7 +21,11 @@
       "Bash(engram sync:*)",
       "Bash(python3:*)",
       "Bash(head:*)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git checkout:*)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

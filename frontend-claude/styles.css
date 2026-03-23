@@ -358,7 +358,7 @@ img {
 
 .phone-mockup {
   width: min(100%, 360px);
-  margin-left: auto;
+  margin: 0 auto;
   background: #fff;
   border-radius: 34px;
   overflow: hidden;

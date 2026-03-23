@@ -1,10 +1,4 @@
-/* ========================================
-   Anotamelo Landing — Waitlist Logic
-   ======================================== */
-
-var WAITLIST_ENDPOINT = 'https://formsubmit.co/ajax/ramirocarnicersouble8@gmail.com';
-
-// ---- Helpers ----
+var WAITLIST_ENDPOINT = "https://formsubmit.co/ajax/ramirocarnicersouble8@gmail.com";
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -12,55 +6,54 @@ function isValidEmail(email) {
 
 function submitToWaitlist(email) {
   var body = new FormData();
-  body.append('email', email);
-  body.append('_replyto', email);
-  body.append('_subject', 'Nueva inscripcion en la waitlist de Anotamelo');
-  body.append('_template', 'table');
-  body.append('_captcha', 'false');
-  body.append('origen', window.location.href);
-  body.append('user_agent', navigator.userAgent || '');
+  body.append("email", email);
+  body.append("_replyto", email);
+  body.append("_subject", "Nueva inscripcion en la waitlist de Anotamelo");
+  body.append("_template", "table");
+  body.append("_captcha", "false");
+  body.append("origen", window.location.href);
+  body.append("user_agent", navigator.userAgent || "");
 
   return fetch(WAITLIST_ENDPOINT, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      Accept: 'application/json'
+      Accept: "application/json"
     },
     body: body
   }).then(function (response) {
-    return response.json().catch(function () { return {}; }).then(function (data) {
-      var failed = !response.ok || data.success === false || data.success === 'false';
+    return response.json().catch(function () {
+      return {};
+    }).then(function (data) {
+      var failed = !response.ok || data.success === false || data.success === "false";
       if (failed) {
-        var message = data && data.message ? data.message : 'No se pudo enviar tu inscripcion.';
-        throw new Error(message);
+        throw new Error(data && data.message ? data.message : "No se pudo enviar tu inscripcion.");
       }
       return data;
     });
   });
 }
 
-// ---- Waitlist Form ----
-
 function initWaitlistForm() {
-  var form = document.getElementById('waitlist-form');
+  var form = document.getElementById("waitlist-form");
   if (!form) return;
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
 
-    var emailInput = document.getElementById('email-input');
-    var successDiv = document.getElementById('waitlist-success');
-    var errorDiv = document.getElementById('waitlist-error');
-    var btnText = form.querySelector('.btn-text');
-    var btnLoading = form.querySelector('.btn-loading');
-
-    errorDiv.hidden = true;
-    errorDiv.textContent = '';
-
+    var emailInput = document.getElementById("email-input");
+    var successDiv = document.getElementById("waitlist-success");
+    var errorDiv = document.getElementById("waitlist-error");
+    var btnText = form.querySelector(".btn-text");
+    var btnLoading = form.querySelector(".btn-loading");
     var email = emailInput.value.trim().toLowerCase();
 
+    errorDiv.hidden = true;
+    errorDiv.textContent = "";
+
     if (!isValidEmail(email)) {
-      errorDiv.textContent = 'Ingresá un email válido.';
       errorDiv.hidden = false;
+      errorDiv.textContent = "Ingresá un email válido.";
+      emailInput.focus();
       return;
     }
 
@@ -73,8 +66,8 @@ function initWaitlistForm() {
         successDiv.hidden = false;
       })
       .catch(function (error) {
-        errorDiv.textContent = error.message || 'No se pudo guardar tu email.';
         errorDiv.hidden = false;
+        errorDiv.textContent = error.message || "No se pudo guardar tu email.";
       })
       .finally(function () {
         btnText.hidden = false;
@@ -83,96 +76,66 @@ function initWaitlistForm() {
   });
 }
 
-// ---- Smooth scroll ----
-
 function initSmoothScroll() {
   document.querySelectorAll('a[href^="#"]').forEach(function (link) {
-    link.addEventListener('click', function (e) {
-      var targetId = this.getAttribute('href');
-      if (targetId === '#') return;
+    link.addEventListener("click", function (event) {
+      var targetId = this.getAttribute("href");
+      if (!targetId || targetId === "#") return;
 
       var target = document.querySelector(targetId);
       if (!target) return;
 
-      e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      event.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
-
-// ---- Mobile menu ----
 
 function initMobileMenu() {
-  var btn = document.querySelector('.mobile-menu-btn');
-  var links = document.querySelector('.nav-links');
-  if (!btn || !links) return;
+  var button = document.querySelector(".mobile-menu-btn");
+  var links = document.querySelector(".nav-links");
+  if (!button || !links) return;
 
-  btn.addEventListener('click', function () {
-    var isOpen = links.style.display === 'flex';
-    links.style.display = isOpen ? 'none' : 'flex';
-    links.style.flexDirection = 'column';
-    links.style.position = 'absolute';
-    links.style.top = '64px';
-    links.style.right = '24px';
-    links.style.background = 'white';
-    links.style.padding = '16px 24px';
-    links.style.borderRadius = '12px';
-    links.style.boxShadow = '0 8px 32px rgba(0,0,0,0.12)';
-    links.style.gap = '12px';
-
-    if (isOpen) {
-      links.removeAttribute('style');
-      if (window.innerWidth <= 768) {
-        links.style.display = 'none';
-      }
-    }
+  button.addEventListener("click", function () {
+    var isOpen = links.classList.toggle("is-open");
+    button.setAttribute("aria-expanded", String(isOpen));
   });
 
-  // Close on link click
-  links.querySelectorAll('a').forEach(function (a) {
-    a.addEventListener('click', function () {
-      if (window.innerWidth <= 768) {
-        links.removeAttribute('style');
-        links.style.display = 'none';
-      }
+  links.querySelectorAll("a").forEach(function (link) {
+    link.addEventListener("click", function () {
+      links.classList.remove("is-open");
+      button.setAttribute("aria-expanded", "false");
     });
   });
 }
 
-// ---- Scroll animations ----
-
 function initScrollAnimations() {
-  var observer = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    },
-    { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-  );
+  var animated = document.querySelectorAll(".animate-on-scroll");
+  if (!animated.length || typeof IntersectionObserver === "undefined") {
+    animated.forEach(function (element) {
+      element.classList.add("visible");
+    });
+    return;
+  }
 
-  document.querySelectorAll(
-    '.feature-card, .step, .demo-card, .waitlist-card, .fh-card, .edu-item, .group-feat, .groups-feature-item, .groups-visual'
-  ).forEach(function (el) {
-    el.classList.add('animate-on-scroll');
-    observer.observe(el);
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("visible");
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.15,
+    rootMargin: "0px 0px -20px 0px"
+  });
+
+  animated.forEach(function (element) {
+    observer.observe(element);
   });
 }
 
-// CSS for scroll animations (injected)
-(function () {
-  var style = document.createElement('style');
-  style.textContent =
-    '.animate-on-scroll { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }' +
-    '.animate-on-scroll.visible { opacity: 1; transform: translateY(0); }';
-  document.head.appendChild(style);
-})();
-
-// ---- Init ----
-
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener("DOMContentLoaded", function () {
   initWaitlistForm();
   initSmoothScroll();
   initMobileMenu();

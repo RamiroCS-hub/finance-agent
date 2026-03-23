@@ -1,0 +1,113 @@
+{
+  "feature": "015-whatsapp-number-rate-limit",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Crear servicio Redis de rate limit",
+      "description": "Agregar la configuración necesaria en app/config.py y crear app/services/rate_limit.py con la lógica de allow/block, retry_after y cooldown de notificación por número.",
+      "files": [
+        "app/config.py",
+        "app/services/rate_limit.py",
+        "tests/test_rate_limit.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio devuelve allow/block por teléfono usando Redis.",
+        "Existe cobertura para ventana, cupo exacto y cooldown de notificación.",
+        "La configuración del límite se puede ajustar por variables de entorno."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-001",
+        "#ADR-004"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Inyectar el rate limiter en startup",
+      "description": "Inicializar el cliente Redis y el RateLimitService desde app/main.py, y extender init_dependencies para que app/api/webhook.py reciba la nueva dependencia sin romper el wiring actual del agente.",
+      "files": [
+        "app/main.py",
+        "app/api/webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "El webhook puede consultar el rate limiter sin reconstruirlo por request.",
+        "El wiring actual del agente sigue funcionando.",
+        "Hay tests que prueban el path permitido por debajo del límite."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Bloquear exceso y aplicar fail-open",
+      "description": "Modificar receive_message para cortar mensajes excedidos antes de background_tasks.add_task, enviar aviso con cooldown cuando corresponda y procesar igual si Redis falla.",
+      "files": [
+        "app/api/webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "Los mensajes excedidos no llaman al agente ni al procesamiento pesado.",
+        "El webhook devuelve 200 incluso cuando bloquea por rate limit.",
+        "Si Redis falla, el mensaje continúa y queda registro en logs."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-003",
+        "#ADR-004"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Validar regresión del webhook completo",
+      "description": "Ejecutar la suite relevante de pytest para el webhook y el rate limiter, confirmando que mensajes soportados, grupos, firma y throttling coexisten sin romper el contrato actual.",
+      "files": [
+        "tests/test_webhook.py",
+        "tests/test_rate_limit.py"
+      ],
+      "acceptance_criteria": [
+        "Pytest cubre casos permitidos, excedidos y fail-open.",
+        "Los tests previos de firma, grupo y OCR siguen pasando o quedan ajustados justificadamente.",
+        "Se confirma que el contrato de respuesta del webhook sigue siendo {\"status\":\"ok\"} para eventos válidos."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "done",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "completed": 4,
+    "pending": 0,
+    "tdd_tasks": 4
+  }
+}

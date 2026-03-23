@@ -1,0 +1,171 @@
+{
+  "feature": "012-db-expense-storage",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Agregar tabla relacional de gastos",
+      "description": "Crear el modelo `Expense`, sus relaciones ORM y la migracion Alembic necesaria para persistir gastos por usuario con orden cronologico estable.",
+      "files": [
+        "app/db/models.py",
+        "migrations/versions/<timestamp>_add_expenses_table.py"
+      ],
+      "acceptance_criteria": [
+        "Existe una tabla `expenses` ligada a `users` con los campos necesarios para reemplazar el shape actual de Sheets",
+        "La migracion puede aplicarse sobre la base actual sin romper modelos existentes",
+        "El modelo expone un orden cronologico utilizable para `delete_last_expense` y recientes"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Implementar servicio DB de gastos",
+      "description": "Crear `app/services/expenses.py` con operaciones de alta, busqueda, recientes, agregados por categoria y borrado del ultimo gasto usando `async_session_maker`.",
+      "files": [
+        "app/services/expenses.py",
+        "app/models/expense.py",
+        "tests/test_expense_service.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio puede crear un gasto para un telefono resolviendo o creando el usuario asociado",
+        "Las consultas mensuales, por categoria, recientes y busqueda se resuelven integramente desde DB",
+        "El borrado del ultimo gasto devuelve informacion suficiente para mantener la UX actual"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Rewirear agent y tools al storage DB",
+      "description": "Actualizar `AgentLoop`, `ToolRegistry` y sus tests para dejar de depender de `SheetsService` en el runtime operativo y consumir el nuevo servicio de gastos.",
+      "files": [
+        "app/agent/core.py",
+        "app/agent/tools.py",
+        "app/main.py",
+        "tests/test_agent.py",
+        "tests/test_tools.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "Registrar, resumir, buscar, listar recientes y borrar el ultimo gasto usan DB como fuente de verdad",
+        "El bot puede iniciar y operar aunque Google Sheets no este configurado",
+        "Las regresiones de agente y tools siguen pasando con el nuevo wiring"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Agregar importador historico desde Sheets",
+      "description": "Acotar `SheetsService` a lectura legacy y agregar una utilidad o comando para importar gastos existentes hacia DB con reportes de omitidos y proteccion ante reruns.",
+      "files": [
+        "app/services/sheets.py",
+        "app/services/expenses.py",
+        "tests/test_sheets_import.py",
+        "docs/setup/local.md",
+        "docs/architecture/current-state.md"
+      ],
+      "acceptance_criteria": [
+        "Existe una forma documentada de importar historico desde Google Sheets hacia la tabla `expenses`",
+        "La importacion no mezcla movimientos entre usuarios y reporta filas invalidas",
+        "Reejecutar la importacion no genera duplicados silenciosos"
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "5",
+      "title": "Actualizar configuracion y docs de storage",
+      "description": "Reflejar que la DB es la fuente operativa de gastos, dejar Google Sheets como dependencia opcional de migracion y ajustar variables de entorno y README.",
+      "files": [
+        ".env.example",
+        "README.md",
+        "docs/setup/local.md",
+        "docs/deploy/supabase.md",
+        "app/config.py"
+      ],
+      "acceptance_criteria": [
+        "La documentacion deja claro que el runtime usa DB para gastos",
+        "Las variables de entorno de Google quedan marcadas como opcionales o solo para migracion",
+        "No quedan instrucciones de arranque que requieran Sheets para registrar gastos"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "3",
+        "4"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "6",
+      "title": "Verificar regresion funcional completa",
+      "description": "Ejecutar la suite relevante, documentar evidencia en el progress log y dejar preparado el reporte de verificacion de la migracion de storage.",
+      "files": [
+        "sdd/wip/012-db-expense-storage/4-implementation/progress.md",
+        "sdd/wip/012-db-expense-storage/5-verify/report.md"
+      ],
+      "acceptance_criteria": [
+        "Quedan documentados los tests ejecutados y su resultado",
+        "Se registra cualquier riesgo residual de migracion o importacion",
+        "La feature queda lista para pasar por `verify` sin ambiguedades"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "5"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "completed": 0,
+    "pending": 6,
+    "tdd_tasks": 4
+  }
+}

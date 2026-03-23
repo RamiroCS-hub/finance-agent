@@ -1,74 +1,61 @@
-# Bot de Gastos por WhatsApp (Setup mínimo)
+# Anotamelo
 
-Bot en FastAPI que recibe mensajes de WhatsApp por webhook, interpreta gastos con un LLM y los guarda en Google Sheets.
+Bot de gastos por WhatsApp sobre FastAPI. El producto actual combina:
 
-## Requisitos
+- WhatsApp Cloud API para ingreso y salida de mensajes
+- LLM configurable para interpretación
+- PostgreSQL como storage operativo de gastos y metadata relacional
+- OCR de tickets por imagen con extracción de monto y comercio
+- presupuestos por categoría con alertas por desvío y gasto inusual
+- insights conversacionales para comparativas y detección de gastos repetidos
+- proyecciones de ahorro por escenarios manuales o recortes sobre histórico
+- seguimiento de cuotas/deudas y lectura educativa personalizada
+- Google Sheets solo como fuente legacy para importar histórico
 
-- Python 3.11+
-- Cuenta de Meta WhatsApp Cloud API
-- API key de LLM (Gemini o DeepSeek/OpenRouter)
-- Google Service Account + Spreadsheet compartido
+## Punto de entrada
 
-## Setup mínimo
+- Setup local: [docs/setup/local.md](/Users/rcarnicer/Desktop/anotamelo/docs/setup/local.md)
+- Guía de Groq para audios: [docs/setup/groq-api-key.md](/Users/rcarnicer/Desktop/anotamelo/docs/setup/groq-api-key.md)
+- Estado actual de arquitectura: [docs/architecture/current-state.md](/Users/rcarnicer/Desktop/anotamelo/docs/architecture/current-state.md)
+- Readiness de deploy con Supabase: [docs/deploy/supabase.md](/Users/rcarnicer/Desktop/anotamelo/docs/deploy/supabase.md)
 
-1. Crear entorno e instalar dependencias:
+## SDD
+
+La fuente viva para features, specs, diseño y task plans es [sdd/](/Users/rcarnicer/Desktop/anotamelo/sdd).
+
+- Config del proyecto: [sdd/PROJECT.md](/Users/rcarnicer/Desktop/anotamelo/sdd/PROJECT.md)
+- Features activas: [sdd/wip](/Users/rcarnicer/Desktop/anotamelo/sdd/wip)
+
+`openspec/` queda como material histórico en transición. Ver [openspec/README.md](/Users/rcarnicer/Desktop/anotamelo/openspec/README.md).
+
+## Desarrollo rápido
 
 ```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-2. Crear `.env` desde ejemplo:
-
-```bash
 cp .env.example .env
+uvicorn app.main:app --reload --port 8000
 ```
 
-3. Completar en `.env` estas variables mínimas:
+## Importación legacy
 
-```env
-# WhatsApp
-WHATSAPP_TOKEN=
-WHATSAPP_PHONE_NUMBER_ID=
-WHATSAPP_VERIFY_TOKEN=mi_token_secreto
-
-# Sheets
-GOOGLE_SHEETS_CREDENTIALS_PATH=credentials/service_account.json
-GOOGLE_SPREADSHEET_ID=
-
-# LLM
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=
-```
-
-4. Guardar credenciales de Google en:
-
-```text
-credentials/service_account.json
-```
-
-5. Ejecutar la app:
+Si necesitás pasar histórico viejo desde Google Sheets a DB:
 
 ```bash
-uvicorn app.main:app --reload --port 8000
+python scripts/import_expenses_from_sheets.py --dry-run
+python scripts/import_expenses_from_sheets.py --phone 5491123456789
 ```
 
 ## Webhook
 
 - Verificación: `GET /webhook`
-- Recepción de mensajes: `POST /webhook`
+- Recepción: `POST /webhook`
 
-En Meta, configurar el callback como:
+Para producción, además de `WHATSAPP_VERIFY_TOKEN`, configurá `WHATSAPP_APP_SECRET` para validar la firma `X-Hub-Signature-256` de Meta.
 
-```text
-https://tu-dominio.com/webhook
-```
+## Tiempo y zonas horarias
 
-Si probás local, podés exponerlo con ngrok y usar su URL pública.
-
-## Notas rápidas
-
-- Si falla Google Sheets, la app inicia igual pero no guarda gastos.
-- `ALLOWED_PHONE_NUMBERS` en `.env` permite limitar qué números pueden usar el bot.
-- Para guía completa, ver `SETUP.md`.
+- La base persiste timestamps en `UTC`.
+- La app infiere la zona horaria local del usuario a partir del prefijo internacional del número de WhatsApp.
+- Las fechas y horas que se muestran al usuario se renderizan en esa zona horaria inferida.

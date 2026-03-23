@@ -1,0 +1,89 @@
+{
+  "feature": "009-saving-projections",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Construir servicio de simulacion deterministica",
+      "description": "Implementar la logica de proyeccion sobre supuestos manuales e historico simple.",
+      "files": [
+        "app/services/projections.py",
+        "tests/test_projections.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio simula escenarios mensuales y semanales",
+        "Los supuestos manuales quedan explicitados en la salida",
+        "Los tests cubren escenarios basicos y casos ambiguos"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Cruzar proyecciones con historial y metas",
+      "description": "Agregar uso de historico real y enriquecimiento opcional con metas activas.",
+      "files": [
+        "app/services/projections.py",
+        "app/services/goals.py",
+        "tests/test_projections.py",
+        "tests/test_goals.py"
+      ],
+      "acceptance_criteria": [
+        "Una proyeccion puede basarse en historial real cuando exista",
+        "La salida puede mostrar impacto sobre una meta activa",
+        "La ausencia de meta no rompe la simulacion"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Exponer proyecciones en el agente",
+      "description": "Agregar la tool conversacional y el wiring del agente para pedir simulaciones desde WhatsApp.",
+      "files": [
+        "app/agent/tools.py",
+        "tests/test_tools.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "El usuario puede pedir una proyeccion desde chat",
+        "La respuesta deja claros los supuestos y el horizonte",
+        "Los tests cubren historico suficiente e insuficiente"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "completed": 0,
+    "pending": 3,
+    "tdd_tasks": 3
+  }
+}

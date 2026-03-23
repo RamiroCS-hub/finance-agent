@@ -89,6 +89,84 @@ def send_image_sync(phone_number: str, image_url: str) -> str | None:
         logger.error("Error enviando imagen a %s: %s", phone_number, e)
         return None
 
+async def upload_media(file_bytes: bytes, mime_type: str, filename: str) -> str | None:
+    """
+    Sube un archivo binario a WhatsApp Cloud API.
+    Retorna el media_id, o None si hubo error.
+    """
+    url = f"{GRAPH_API_URL}/{settings.WHATSAPP_PHONE_NUMBER_ID}/media"
+    headers = {"Authorization": f"Bearer {settings.WHATSAPP_TOKEN}"}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                headers=headers,
+                data={"messaging_product": "whatsapp"},
+                files={"file": (filename, file_bytes, mime_type)},
+                timeout=30.0,
+            )
+            if response.status_code >= 400:
+                logger.error(
+                    "WhatsApp upload_media error %s: %s",
+                    response.status_code,
+                    response.text,
+                )
+                return None
+            media_id = response.json().get("id")
+            logger.info("Media subido correctamente (id: %s)", media_id)
+            return media_id
+    except Exception as e:
+        logger.error("Error subiendo media a WhatsApp: %s", e)
+        return None
+
+
+async def send_document(
+    phone_number: str,
+    media_id: str,
+    filename: str,
+    caption: str | None = None,
+) -> str | None:
+    """
+    Envía un documento (PDF, etc.) por WhatsApp usando un media_id previamente subido.
+    Retorna el wamid del mensaje enviado, o None si hubo error.
+    """
+    phone_number = _normalize_ar_phone(phone_number)
+    url = f"{GRAPH_API_URL}/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {settings.WHATSAPP_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    doc: dict = {"id": media_id, "filename": filename}
+    if caption:
+        doc["caption"] = caption
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+        "type": "document",
+        "document": doc,
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=payload, timeout=15.0)
+            if response.status_code >= 400:
+                logger.error(
+                    "WhatsApp send_document error %s para %s: %s",
+                    response.status_code,
+                    phone_number,
+                    response.text,
+                )
+                return None
+            data = response.json()
+            wamid = data.get("messages", [{}])[0].get("id")
+            logger.info("Documento enviado a %s (wamid: %s)", phone_number, wamid)
+            return wamid
+    except Exception as e:
+        logger.error("Error enviando documento a %s: %s", phone_number, e)
+        return None
+
+
 async def download_media(media_id: str) -> bytes | None:
     """
     Descarga el contenido binario de un media_id desde WhatsApp.

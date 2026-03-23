@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.db.models import Goal
-from app.services.goals import update_goal_progress
+from app.services.goals import create_or_update_goal, update_goal_progress
 
 @pytest.mark.asyncio
 async def test_update_goal_progress():
@@ -53,3 +53,19 @@ async def test_update_goal_progress_no_active_goal():
     assert result is None
     assert not session.commit.called
 
+
+@pytest.mark.asyncio
+async def test_create_group_goal_when_missing():
+    session = MagicMock()
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    session.execute.return_value = mock_result
+
+    result = await create_or_update_goal(session, target_amount=5000.0, group_id=7)
+
+    assert result["status"] == "created"
+    assert result["target_amount"] == 5000.0
+    assert session.add.called
+    assert session.commit.called

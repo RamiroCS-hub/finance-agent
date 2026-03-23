@@ -48,18 +48,27 @@ class GeminiProvider:
         tools: list[ToolDefinition],
         system_prompt: str,
     ) -> ChatResponse:
+        from google.genai import errors as genai_errors
+
         gemini_tools = self._build_gemini_tools(tools)
         contents = self._messages_to_contents(messages)
 
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=contents,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                tools=gemini_tools,
-                temperature=0.1,
-            ),
-        )
+        try:
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=contents,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    tools=gemini_tools,
+                    temperature=0.1,
+                ),
+            )
+        except genai_errors.ClientError as exc:
+            status = str(exc)
+            if "429" in status or "RESOURCE_EXHAUSTED" in status:
+                logger.error("Gemini rate limit (429) en modelo %s: %s", self.model, exc)
+                raise RuntimeError("gemini_rate_limited") from exc
+            raise
 
         candidate = response.candidates[0]
         tool_calls: list[ToolCall] = []
@@ -150,12 +159,14 @@ class GeminiProvider:
                 i += 1
 
             elif msg.role == "assistant":
-                if isinstance(msg.content, list):
+                if msg.tool_calls:
                     # Tool calls del assistant
                     parts = [
                         {"function_call": {"name": tc.name, "args": tc.arguments}}
-                        for tc in msg.content
+                        for tc in msg.tool_calls
                     ]
+                    if isinstance(msg.content, str) and msg.content:
+                        parts = [{"text": msg.content}] + parts
                     contents.append({"role": "model", "parts": parts})
                 else:
                     contents.append({"role": "model", "parts": [{"text": msg.content}]})
@@ -187,6 +198,7 @@ class DeepSeekProvider:
     """Azure OpenAI / DeepSeek — Usa llamadas HTTP directas."""
 
     def __init__(self, config: Settings) -> None:
+        self.config = config
         self.model = config.DEEPSEEK_MODEL
         self.base_url = config.DEEPSEEK_BASE_URL
         self.api_key = config.DEEPSEEK_API_KEY
@@ -209,15 +221,22 @@ class DeepSeekProvider:
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.base_url,
-                headers=headers,
-                json=payload,
-                timeout=90.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"] or ""
+            try:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=90.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"] or ""
+            except httpx.HTTPStatusError as exc:
+                self._log_http_error("complete", exc)
+                fallback = await self._fallback_complete(system_prompt, user_message)
+                if fallback is not None:
+                    return fallback
+                raise
 
     async def chat_with_tools(
         self,
@@ -242,14 +261,21 @@ class DeepSeekProvider:
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.base_url,
-                headers=headers,
-                json=payload,
-                timeout=90.0,
-            )
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=90.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as exc:
+                self._log_http_error("chat_with_tools", exc)
+                fallback = await self._fallback_chat_with_tools(messages, tools, system_prompt)
+                if fallback is not None:
+                    return fallback
+                raise
 
         choice = data["choices"][0]
         message = choice["message"]
@@ -326,7 +352,11 @@ class DeepSeekProvider:
                         for tc in msg.tool_calls
                     ]
                     result.append(
-                        {"role": "assistant", "content": msg.content, "tool_calls": tool_calls_data}
+                        {
+                            "role": "assistant",
+                            "content": msg.content if isinstance(msg.content, str) else None,
+                            "tool_calls": tool_calls_data,
+                        }
                     )
                 else:
                     result.append({"role": "assistant", "content": msg.content})
@@ -339,6 +369,60 @@ class DeepSeekProvider:
                     }
                 )
         return result
+
+    def _log_http_error(self, operation: str, exc) -> None:
+        response = exc.response
+        body = ""
+        try:
+            body = response.text
+        except Exception:
+            body = "<body-unavailable>"
+        logger.error(
+            "DeepSeek %s falló con HTTP %s. body=%s",
+            operation,
+            response.status_code,
+            body[:1000],
+        )
+
+    async def _fallback_chat_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[ToolDefinition],
+        system_prompt: str,
+    ) -> ChatResponse | None:
+        provider = self._build_gemini_fallback()
+        if provider is None:
+            return None
+        logger.warning("Fallback a Gemini para chat_with_tools tras error de DeepSeek")
+        try:
+            return await provider.chat_with_tools(messages, tools, system_prompt)
+        except RuntimeError as exc:
+            if "gemini_rate_limited" in str(exc):
+                logger.error("Fallback a Gemini también falló por rate limit (429)")
+                return None
+            raise
+
+    async def _fallback_complete(
+        self,
+        system_prompt: str,
+        user_message: str,
+    ) -> str | None:
+        provider = self._build_gemini_fallback()
+        if provider is None:
+            return None
+        logger.warning("Fallback a Gemini para complete tras error de DeepSeek")
+        try:
+            return await provider.complete(system_prompt, user_message)
+        except RuntimeError as exc:
+            if "gemini_rate_limited" in str(exc):
+                logger.error("Fallback a Gemini también falló por rate limit (429)")
+                return None
+            raise
+
+    def _build_gemini_fallback(self) -> GeminiProvider | None:
+        if not self.config.GEMINI_API_KEY:
+            return None
+        return GeminiProvider(self.config)
 
 
 def get_provider(config: Settings) -> LLMProvider:

@@ -1,0 +1,87 @@
+{
+  "feature": "008-spending-leak-insights",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Extender consultas historicas para comparativas",
+      "description": "Agregar soporte a consultas agregadas por periodo, categoria y descripcion.",
+      "files": [
+        "app/services/sheets.py",
+        "tests/test_sheets.py"
+      ],
+      "acceptance_criteria": [
+        "Existen consultas para comparar dos periodos",
+        "Las comparativas manejan historicos incompletos",
+        "Los tests cubren casos con y sin datos suficientes"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Implementar motor de insights y fugas",
+      "description": "Construir la logica de patrones repetitivos, merchants frecuentes e impacto acumulado.",
+      "files": [
+        "app/services/insights.py",
+        "tests/test_insights.py"
+      ],
+      "acceptance_criteria": [
+        "El motor detecta patrones repetitivos claros",
+        "El motor no afirma conclusiones fuertes con datos ambiguos",
+        "Los tests cubren impacto acumulado y casos vacios"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-03",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Exponer insights en tools conversacionales",
+      "description": "Agregar tools y wiring del agente para pedir comparativas e insights accionables.",
+      "files": [
+        "app/agent/tools.py",
+        "app/agent/core.py",
+        "tests/test_tools.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "El usuario puede pedir comparativas e insights por chat",
+        "Las respuestas son accionables y no dumps de datos",
+        "Las regresiones del resto del agente siguen pasando"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "completed": 0,
+    "pending": 3,
+    "tdd_tasks": 3
+  }
+}

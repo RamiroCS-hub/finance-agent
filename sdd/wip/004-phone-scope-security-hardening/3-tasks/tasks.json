@@ -1,0 +1,160 @@
+{
+  "feature": "004-phone-scope-security-hardening",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Agregar verificacion de autenticidad del webhook",
+      "description": "Implementar la validacion del request entrante en el borde de `app/api/webhook.py` y cubrir requests validos e invalidos.",
+      "files": [
+        "app/api/webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "Un request autentico de Meta sigue procesandose normalmente",
+        "Un request forjado es rechazado antes de usar `message.from`",
+        "Los tests cubren camino feliz y firma invalida"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Introducir contexto de entidad confiable",
+      "description": "Crear una estructura de contexto seguro para diferenciar actor, tipo de chat y grupo antes de invocar al agente.",
+      "files": [
+        "app/api/webhook.py",
+        "app/agent/core.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "El agente recibe un contexto consistente para chats privados y grupales",
+        "No se pierde compatibilidad con replies y memoria conversacional",
+        "Los tests verifican el wiring del nuevo contexto"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Restringir tools al ambito permitido",
+      "description": "Actualizar el ToolRegistry y servicios sensibles para que solo lean o escriban dentro del contexto autenticado.",
+      "files": [
+        "app/agent/tools.py",
+        "app/services/sheets.py",
+        "tests/test_tools_cross_context.py",
+        "tests/test_tools.py"
+      ],
+      "acceptance_criteria": [
+        "Las tools sensibles no pueden operar fuera del alcance autenticado",
+        "Las regresiones existentes siguen pasando para casos permitidos",
+        "El scoping de grupo y usuario queda explicitamente cubierto"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-03",
+        "#ADR-002",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Eliminar exposicion de spreadsheet global",
+      "description": "Revisar `get_sheet_url` y cualquier salida equivalente para evitar enlaces o recursos demasiado amplios.",
+      "files": [
+        "app/agent/tools.py",
+        "app/services/sheets.py",
+        "tests/test_tools.py"
+      ],
+      "acceptance_criteria": [
+        "La salida ya no expone un recurso global sin scoping",
+        "Existe una alternativa segura o la tool queda restringida",
+        "Los tests cubren el nuevo comportamiento"
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "5",
+      "title": "Agregar cobertura de seguridad de regresion",
+      "description": "Expandir la suite con escenarios de impersonacion, acceso cruzado y requests no autenticos.",
+      "files": [
+        "tests/test_webhook.py",
+        "tests/test_tools_cross_context.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "Existe al menos un test de request forjado al webhook",
+        "Existe al menos un test de acceso cruzado bloqueado",
+        "Los casos legitimos siguen pasando sin regresiones"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "4"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "6",
+      "title": "Registrar smoke test final de hardening",
+      "description": "Ejecutar la suite relevante y dejar evidencia del comportamiento endurecido en el progress log de la feature.",
+      "files": [
+        "sdd/wip/004-phone-scope-security-hardening/4-implementation/progress.md"
+      ],
+      "acceptance_criteria": [
+        "La evidencia de validacion final queda documentada",
+        "Se listan tests ejecutados y resultado",
+        "Se registra cualquier riesgo residual conocido"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "5"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "completed": 0,
+    "pending": 6,
+    "tdd_tasks": 5
+  }
+}

@@ -8,13 +8,14 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.agent.core import AgentLoop
+from app.agent.core import AgentLoop, load_system_prompt_template
 from app.agent.memory import ConversationMemory
-from app.models.agent import ChatResponse, Message, ToolCall
+from app.models.agent import ChatResponse, Message, ToolCall, ToolDefinition
 
 
 # ---------------------------------------------------------------------------
@@ -43,11 +44,12 @@ def stop_response(text: str) -> ChatResponse:
 def mock_sheets():
     sheets = MagicMock()
     sheets.ensure_user.return_value = False
-    sheets.append_expense.return_value = 3
+    sheets.append_expense.return_value = SimpleNamespace(id=3, user_id=1)
     sheets.get_monthly_total.return_value = 5000.0
     sheets.get_category_totals.return_value = {"Comida": 2000.0, "Transporte": 3000.0}
     sheets.get_recent_expenses.return_value = []
     sheets.search_expenses.return_value = []
+    sheets.delete_last_expense.return_value = None
     sheets.get_sheet_url.return_value = "https://docs.google.com/spreadsheets/d/abc"
     return sheets
 
@@ -126,6 +128,161 @@ class TestAgentLoopBasicFlow:
 
         # Debe quedar "Texto1 Texto2" (con espacio), no "Texto1Texto2"
         assert result == "Texto1 Texto2"
+
+    def test_strip_escaped_thinking_tags(self, agent, mock_llm):
+        mock_llm.chat_with_tools.return_value = stop_response(
+            "&lt;think&gt;razonamiento&lt;/think&gt; Hola final"
+        )
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert result == "Hola final"
+
+    def test_redacts_internal_tool_names_from_final_reply(self, agent, mock_llm):
+        mock_llm.chat_with_tools.return_value = stop_response(
+            "No pude hacerlo con register_expense. Probá con get_monthly_summary."
+        )
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert "register_expense" not in result
+        assert "get_monthly_summary" not in result
+        assert "esa opción" in result
+
+    def test_redacts_unknown_snake_case_identifiers_from_final_reply(self, agent, mock_llm):
+        mock_llm.chat_with_tools.return_value = stop_response(
+            "No pude hacerlo con recurring_expense_create pero sí con otra alternativa."
+        )
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert "recurring_expense_create" not in result
+        assert "esa opción" in result
+
+    def test_strips_plain_text_reasoning_with_response_marker(self, agent, mock_llm):
+        """Verifica que razonamiento en texto plano (DeepSeek-R1 style) se elimine cuando hay 'Response:'."""
+        reasoning_blob = (
+            "We are in a private chat, so we don't have group context.\n"
+            "The user said: '39k en uber' -> amount=39000, category=Transporte.\n"
+            "We called register_expense and it returned a success.\n"
+            "\nResponse:\n\n"
+            "Gasto registrado:\n"
+            "*Uber:* $39.000\n"
+            "Categoría: Transporte 🚗"
+        )
+        mock_llm.chat_with_tools.return_value = stop_response(reasoning_blob)
+
+        result = asyncio.run(agent.process(PHONE, "39k en uber"))
+
+        assert "We are in a private chat" not in result
+        assert "The user said" not in result
+        assert "Gasto registrado" in result
+        assert "Transporte" in result
+
+    def test_strips_plain_text_reasoning_response_marker_case_insensitive(self, agent, mock_llm):
+        """Verifica que el marcador 'response:' sea case-insensitive."""
+        raw = "Razonamiento interno...\nresponse:\n\nRespuesta final del bot."
+        mock_llm.chat_with_tools.return_value = stop_response(raw)
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert "Razonamiento interno" not in result
+        assert "Respuesta final del bot." in result
+
+    def test_strips_inline_final_response_marker(self, agent, mock_llm):
+        """Verifica extracción con 'Final response: <respuesta>' en la misma línea."""
+        raw = (
+            "The user said '15k caños'. I'll call esa opción with amount=15000.\n\n"
+            "The tool response shows it was successful.\n\n"
+            "Final response: Gasto registrado: $15.000 en caños (Hogar)\n\n"
+            "Gasto registrado: $15.000 en caños (Hogar)"
+        )
+        mock_llm.chat_with_tools.return_value = stop_response(raw)
+
+        result = asyncio.run(agent.process(PHONE, "15k caños"))
+
+        assert "The user said" not in result
+        assert "I'll call" not in result
+        # Debe aparecer una sola vez (sin duplicado)
+        assert result.count("Gasto registrado") == 1
+        assert "caños" in result
+
+    def test_strips_reasoning_via_heuristic_no_marker(self, agent, mock_llm):
+        """Verifica extracción heurística cuando no hay marcador 'Response:' y el primer
+        párrafo inicia con un indicador de razonamiento reconocible."""
+        raw = (
+            "The user registered an expense of 10,000 ARS for csushi.\n"
+            "The tool call was successful.\n\n"
+            "I'll use WhatsApp formatting.\n\n"
+            "🍔 *Comida:* $10.000 en csushi."
+        )
+        mock_llm.chat_with_tools.return_value = stop_response(raw)
+
+        result = asyncio.run(agent.process(PHONE, "10k csushi"))
+
+        assert "The user registered" not in result
+        assert "🍔" in result
+        assert "csushi" in result
+
+    def test_preserves_bullet_points_on_separate_lines(self, agent, mock_llm):
+        mock_llm.chat_with_tools.return_value = stop_response(
+            "Opciones: • primera alternativa • segunda alternativa 1. tercer paso 2. cuarto paso"
+        )
+
+        result = asyncio.run(agent.process(PHONE, "hola"))
+
+        assert "\n• primera alternativa" in result
+        assert "\n• segunda alternativa" in result
+        assert "\n1. tercer paso" in result
+        assert "\n2. cuarto paso" in result
+
+    def test_prefers_canonical_tool_reply_over_invented_stop_text(self, mock_llm, mock_sheets, memory):
+        mock_llm.chat_with_tools.side_effect = [
+            tool_use_response("create_liability", {"kind": "installment"}),
+            stop_response(
+                "✅ Registré la deuda\n- Cuotas restantes: 9\nCada mes se sumará automáticamente a tu compromiso"
+            ),
+        ]
+        fake_registry = MagicMock()
+        fake_registry.definitions.return_value = [
+            ToolDefinition(
+                name="create_liability",
+                description="",
+                parameters={},
+                fn=MagicMock(),
+            )
+        ]
+        fake_registry.run.return_value = {
+            "success": True,
+            "formatted_confirmation": (
+                "✅ Registré la obligación: *Sofá en cuotas*\n"
+                "- Cuotas restantes: 9\n"
+                "- Monto mensual: *$30.000*"
+            ),
+        }
+        agent = AgentLoop(
+            llm=mock_llm,
+            sheets=mock_sheets,
+            memory=memory,
+            max_iterations=5,
+        )
+
+        with patch("app.agent.core.ToolRegistry", return_value=fake_registry):
+            result = asyncio.run(agent.process(PHONE, "registrá el sofá"))
+
+        assert result == (
+            "✅ Registré la obligación: *Sofá en cuotas*\n"
+            "- Cuotas restantes: 9\n"
+            "- Monto mensual: *$30.000*"
+        )
+        assert "automáticamente" not in result
+
+    def test_system_prompt_template_is_loaded_from_markdown(self):
+        template = load_system_prompt_template()
+
+        assert "VERACIDAD:" in template
+        assert "formatted_confirmation" in template
+        assert "Nunca inventes automatismos" in template
 
     def test_tool_use_then_stop_returns_final_text(self, agent, mock_llm):
         """LLM llama a una tool y luego responde con texto; retorna el texto final."""

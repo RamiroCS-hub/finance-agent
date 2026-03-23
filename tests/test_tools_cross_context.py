@@ -75,3 +75,33 @@ async def test_get_user_groups_info_tool_no_user():
         
         assert result["success"] is False
         assert "Usuario no encontrado" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_register_group_expense_tool_requires_group_context():
+    registry = ToolRegistry(phone="+5491112345678")
+
+    result = await registry.run(
+        "register_group_expense",
+        amount=1000,
+        description="super",
+    )
+
+    assert result["success"] is False
+    assert "grupo" in result["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_group_balance_tool_uses_group_service():
+    registry = ToolRegistry(phone="+5491112345678", chat_type="group", group_id="group-1")
+    registry.group_expense_service.get_group_balance = AsyncMock(
+        return_value={"success": True, "members": []}
+    )
+
+    result = await registry.run("get_group_balance")
+
+    assert result["success"] is True
+    registry.group_expense_service.get_group_balance.assert_awaited_once_with(
+        "group-1",
+        "+5491112345678",
+    )

@@ -1,0 +1,110 @@
+{
+  "feature": "014-landing-cta-priority",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Reordenar la landing para convertir arriba",
+      "description": "Recortar la estructura de frontend-claude/index.html para dejar el formulario principal y el CTA de waitlist dentro del hero, consolidar secciones redundantes y mantener un recorrido más corto.",
+      "files": [
+        "frontend-claude/index.html"
+      ],
+      "acceptance_criteria": [
+        "El primer bloque visible contiene propuesta de valor y acceso inmediato a la waitlist.",
+        "La landing queda con menos bloques principales que la versión actual.",
+        "Los CTA secundarios apuntan al mismo formulario principal."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-002",
+        "#ADR-003"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "tdd": false
+    },
+    {
+      "id": "2",
+      "title": "Ajustar estilos para hero compacto",
+      "description": "Actualizar frontend-claude/styles.css para soportar el nuevo hero con formulario, una landing más corta y una jerarquía visual clara en desktop y mobile.",
+      "files": [
+        "frontend-claude/styles.css"
+      ],
+      "acceptance_criteria": [
+        "El hero acomoda contenido y formulario sin saturarse en mobile.",
+        "La nueva estructura mantiene una jerarquía visual clara con el CTA principal destacado.",
+        "No quedan estilos huérfanos críticos que rompan la navegación o los bloques conservados."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "done",
+      "tdd": false
+    },
+    {
+      "id": "3",
+      "title": "Adaptar JS al formulario principal",
+      "description": "Modificar frontend-claude/script.js para conservar el flujo de waitlist con el formulario reubicado, mantener validación y asegurar que los CTA/anclas lleven al mismo punto de conversión.",
+      "files": [
+        "frontend-claude/script.js"
+      ],
+      "acceptance_criteria": [
+        "El formulario sigue validando email y enviando a FormSubmit.",
+        "Los estados de éxito y error siguen visibles en el flujo principal.",
+        "La navegación por anchors sigue llevando al formulario principal sin romper el menú mobile."
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1",
+        "2"
+      ],
+      "status": "done",
+      "tdd": false
+    },
+    {
+      "id": "4",
+      "title": "Verificar la experiencia de punta a punta",
+      "description": "Ejecutar smoke tests manuales de la landing en desktop y mobile para CTA, navegación, validación de email y estados del formulario antes de dar por cerrada la implementación.",
+      "files": [
+        "frontend-claude/index.html",
+        "frontend-claude/styles.css",
+        "frontend-claude/script.js"
+      ],
+      "acceptance_criteria": [
+        "El CTA principal y el formulario aparecen arriba del fold en desktop y mobile.",
+        "Los CTA de navbar y secciones posteriores llevan al mismo punto de registro.",
+        "Se valida al menos un caso de error y un caso de éxito del formulario."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "completed": 3,
+    "pending": 1,
+    "tdd_tasks": 0
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "feature": "005-whatsapp-group-expenses-and-goals",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Resolver contexto grupal en el webhook",
+      "description": "Actualizar el ingreso de mensajes para identificar grupo, actor y mencion antes de invocar al agente.",
+      "files": [
+        "app/api/webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "Los mensajes grupales con mencion se procesan con contexto de grupo",
+        "Los mensajes sin mencion se ignoran sin efectos colaterales",
+        "Los tests cubren privado, grupo ignorado y grupo procesado"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Extender modelo relacional para ledger grupal",
+      "description": "Agregar entidades y migraciones para gastos compartidos, shares y relaciones necesarias con grupos y miembros.",
+      "files": [
+        "app/db/models.py",
+        "migrations/versions",
+        "tests/test_db_models.py"
+      ],
+      "acceptance_criteria": [
+        "Existe un modelo persistente para gastos compartidos y shares",
+        "Las migraciones crean las tablas requeridas sin romper el esquema previo",
+        "Los tests cubren las nuevas relaciones basicas"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Implementar servicio de gastos y balances grupales",
+      "description": "Crear la logica de registro de aportes, calculo de balances y liquidacion minima entre miembros.",
+      "files": [
+        "app/services/group_expenses.py",
+        "tests/test_group_expenses.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio registra aportes grupales con el pagador correcto",
+        "El balance devuelve cuanto puso cada miembro y su saldo neto",
+        "La liquidacion genera transferencias minimas reproducibles"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Extender tools del agente para grupos",
+      "description": "Agregar herramientas y prompt wiring para registrar gasto grupal, pedir balance, liquidar y consultar grupos en privado.",
+      "files": [
+        "app/agent/core.py",
+        "app/agent/tools.py",
+        "tests/test_tools_cross_context.py",
+        "tests/test_agent.py"
+      ],
+      "acceptance_criteria": [
+        "El agente dispone de tools especificas para grupos",
+        "Las consultas privadas solo devuelven grupos del usuario autenticado",
+        "Las regresiones del flujo privado siguen pasando"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-03",
+        "#ADR-001"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "5",
+      "title": "Adaptar metas compartidas al owner grupal",
+      "description": "Refactorizar el servicio de metas para soportar progreso de grupo y consultas cruzadas seguras.",
+      "files": [
+        "app/services/goals.py",
+        "app/db/models.py",
+        "tests/test_goals.py"
+      ],
+      "acceptance_criteria": [
+        "Una meta grupal puede crearse y actualizarse en el contexto correcto",
+        "El progreso de grupo no contamina metas individuales",
+        "Los tests cubren cumplimiento y consulta de metas grupales"
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "6",
+      "title": "Conectar flujo grupal de punta a punta",
+      "description": "Completar el wiring entre webhook, agente, servicios y persistencia para grupos y registrar un smoke test manual.",
+      "files": [
+        "app/main.py",
+        "tests/e2e/test_api.py",
+        "sdd/wip/005-whatsapp-group-expenses-and-goals/4-implementation/progress.md"
+      ],
+      "acceptance_criteria": [
+        "Un mensaje grupal puede registrar un gasto compartido de punta a punta",
+        "El balance y la consulta privada funcionan sobre datos reales",
+        "La evidencia del smoke test queda documentada"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "4",
+        "5"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "completed": 0,
+    "pending": 6,
+    "tdd_tasks": 6
+  }
+}

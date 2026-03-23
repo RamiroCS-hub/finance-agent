@@ -1,0 +1,85 @@
+{
+  "feature": "013-tools-to-skills-separation",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Definir contexto compartido e interfaz de skill",
+      "description": "Crear la abstracción mínima para que distintas skills compartan contexto y expongan tools compatibles.",
+      "files": [
+        "app/agent/tools.py",
+        "app/models/agent.py"
+      ],
+      "acceptance_criteria": [
+        "Existe una interfaz o protocolo de skill",
+        "Existe un contexto compartido para handlers",
+        "El contrato de ToolDefinition no se rompe"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-002"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Extraer skills por dominio",
+      "description": "Separar las tools actuales en módulos por dominio como gastos, grupos, insights, presupuestos y utilidades.",
+      "files": [
+        "app/agent/tools.py",
+        "app/agent/"
+      ],
+      "acceptance_criteria": [
+        "Las tools quedan agrupadas por dominio",
+        "El registry final compone esas skills",
+        "No cambia el set observable de tools"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Cubrir regresión del agente y composición final",
+      "description": "Actualizar tests para validar skills aisladas y composición final del registry.",
+      "files": [
+        "tests/test_tools.py",
+        "tests/test_tools_cross_context.py",
+        "tests/test_agent.py"
+      ],
+      "acceptance_criteria": [
+        "Hay tests por skill o por dominio",
+        "La composición final del registry coincide con lo esperado",
+        "La suite del agente sigue verde"
+      ],
+      "spec_refs": [
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "completed": 0,
+    "pending": 3,
+    "tdd_tasks": 3
+  }
+}

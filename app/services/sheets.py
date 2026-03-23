@@ -232,6 +232,32 @@ class SheetsService:
     def get_sheet_url(self) -> str:
         return f"https://docs.google.com/spreadsheets/d/{settings.GOOGLE_SPREADSHEET_ID}"
 
+    def list_user_phones(self) -> list[str]:
+        users_ws = self.spreadsheet.worksheet("Usuarios")
+        phones = users_ws.col_values(1)
+        return [phone for phone in phones[1:] if phone]
+
+    def export_expenses(self, phone: str) -> list[dict]:
+        rows = self._get_all_expenses(phone)
+        exported: list[dict] = []
+        for row in rows:
+            exported.append(
+                {
+                    "fecha": row[0] if len(row) > 0 else "",
+                    "hora": row[1] if len(row) > 1 else "",
+                    "monto": row[2] if len(row) > 2 else "",
+                    "moneda": row[3] if len(row) > 3 else "",
+                    "descripcion": row[4] if len(row) > 4 else "",
+                    "categoria": row[5] if len(row) > 5 else "",
+                    "shop": "",
+                    "calculo": row[6] if len(row) > 6 else "",
+                    "mensaje_original": row[7] if len(row) > 7 else "",
+                    "monto_original": row[8] if len(row) > 8 else "",
+                    "moneda_original": row[9] if len(row) > 9 else "",
+                }
+            )
+        return exported
+
     def _get_all_expenses(self, phone: str) -> list[list[str]]:
         """Retorna todas las filas de gastos del usuario (sin headers)."""
         try:

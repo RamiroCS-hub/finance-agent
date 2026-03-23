@@ -1,7 +1,17 @@
 import pytest
 from sqlalchemy import select
 
-from app.db.models import ChatConfiguration, Goal, Group, GroupMember, User
+from app.db.models import (
+    BudgetRule,
+    ChatConfiguration,
+    Goal,
+    Group,
+    GroupExpense,
+    GroupExpenseShare,
+    GroupMember,
+    Liability,
+    User,
+)
 
 
 def test_models_import():
@@ -11,6 +21,10 @@ def test_models_import():
     assert GroupMember.__tablename__ == "group_members"
     assert Goal.__tablename__ == "goals"
     assert ChatConfiguration.__tablename__ == "chat_configurations"
+    assert GroupExpense.__tablename__ == "group_expenses"
+    assert GroupExpenseShare.__tablename__ == "group_expense_shares"
+    assert BudgetRule.__tablename__ == "budget_rules"
+    assert Liability.__tablename__ == "liabilities"
 
 
 @pytest.mark.asyncio

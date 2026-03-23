@@ -9,6 +9,7 @@ import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from app.models.agent import ChatResponse, Message, ToolCall, ToolDefinition
@@ -378,3 +379,51 @@ class TestDeepSeekProviderChatWithTools:
         assert tool_msg["role"] == "tool"
         assert tool_msg["content"] == '{"success": true}'
         assert tool_msg["tool_call_id"] == "call_abc123"
+
+    @patch("app.services.llm_provider.GeminiProvider")
+    @patch("httpx.AsyncClient")
+    def test_chat_with_tools_falls_back_to_gemini_on_http_400(
+        self,
+        mock_client_class,
+        mock_gemini_cls,
+        test_settings,
+        expense_tool,
+        user_message,
+    ):
+        provider = self._make_provider(test_settings)
+        request = httpx.Request("POST", test_settings.DEEPSEEK_BASE_URL)
+        response = httpx.Response(
+            400,
+            request=request,
+            text='{"error":"tools not supported"}',
+        )
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "bad request",
+            request=request,
+            response=response,
+        )
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_resp
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+
+        fallback = AsyncMock(
+            return_value=ChatResponse(
+                content="respuesta fallback",
+                tool_calls=None,
+                finish_reason="stop",
+            )
+        )
+        mock_gemini_cls.return_value.chat_with_tools = fallback
+
+        result = asyncio.run(
+            provider.chat_with_tools(
+                messages=user_message,
+                tools=[expense_tool],
+                system_prompt="Sos un asistente de gastos.",
+            )
+        )
+
+        assert result.finish_reason == "stop"
+        assert result.content == "respuesta fallback"
+        fallback.assert_awaited_once()

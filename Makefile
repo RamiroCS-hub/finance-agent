@@ -1,11 +1,25 @@
 .PHONY: help test dev up down build migrate
 
 # Variables
-VENV_BIN = venv/bin
-PYTHON = $(VENV_BIN)/python
-PYTEST = $(VENV_BIN)/pytest
-UVICORN = $(VENV_BIN)/uvicorn
-ALEMBIC = $(VENV_BIN)/alembic
+PYTHON := $(shell \
+	if [ -x ./venv/bin/python ] && ./venv/bin/python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then \
+		echo ./venv/bin/python; \
+	elif [ -x ./.venv/bin/python ] && ./.venv/bin/python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then \
+		echo ./.venv/bin/python; \
+	elif [ -x /Users/rcarnicer/.fury/fury_venv/bin/python ] && /Users/rcarnicer/.fury/fury_venv/bin/python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then \
+		echo /Users/rcarnicer/.fury/fury_venv/bin/python; \
+	else \
+		echo ""; \
+	fi \
+)
+PYTEST = $(PYTHON) -m pytest
+UVICORN = $(PYTHON) -m uvicorn
+ALEMBIC = $(PYTHON) -m alembic
+COMPOSE = $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
+
+ifeq ($(PYTHON),)
+$(error No se encontró un Python 3.11+ compatible. Creá `venv`/`.venv` con Python 3.11+ o usá un entorno equivalente)
+endif
 
 help:
 	@echo "Comandos disponibles:"
@@ -23,10 +37,10 @@ test:
 	$(PYTEST) tests/
 
 up:
-	docker-compose up -d
+	$(COMPOSE) up -d
 
 down:
-	docker-compose down
+	$(COMPOSE) down
 
 build:
 	docker build -t finance_bot_api .

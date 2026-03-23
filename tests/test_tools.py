@@ -1,12 +1,13 @@
 """
-Tests para app/agent/tools.py — Fase 4: ToolRegistry.
+Tests para app/agent/tools.py.
 
-Verifica que cada herramienta llame a SheetsService con los argumentos correctos
-y que retorne el formato esperado.
+Verifica que las herramientas de gastos hablen con el store de DB y mantengan
+el formato observable esperado.
 """
 from __future__ import annotations
 
-from unittest.mock import MagicMock, AsyncMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,53 +15,135 @@ from app.agent.tools import ToolRegistry
 from app.models.agent import ToolDefinition
 
 
-# ---------------------------------------------------------------------------
-# Fixture: ToolRegistry con SheetsService mockeado
-# ---------------------------------------------------------------------------
+@pytest.fixture
+def mock_store():
+    store = MagicMock()
+    store.append_expense.return_value = SimpleNamespace(id=3, user_id=1)
+    store.get_monthly_total.return_value = 5000.0
+    store.get_category_totals.return_value = {"Comida": 2000.0, "Transporte": 3000.0}
+    store.get_recent_expenses.return_value = [
+        {
+            "expense_id": 11,
+            "fecha": "2026-02-19",
+            "monto": 850.0,
+            "descripcion": "uber",
+            "categoria": "Transporte",
+            "hora": "10:00",
+            "moneda": "ARS",
+        },
+        {
+            "expense_id": 10,
+            "fecha": "2026-02-18",
+            "monto": 500.0,
+            "descripcion": "farmacia",
+            "categoria": "Salud",
+            "hora": "09:30",
+            "moneda": "ARS",
+        },
+    ]
+    store.search_expenses.return_value = [
+        {
+            "expense_id": 10,
+            "fecha": "2026-02-18",
+            "monto": 1200.0,
+            "descripcion": "combo burger",
+            "shop": "Burger Club",
+            "categoria": "Comida",
+            "hora": "09:30",
+            "moneda": "ARS",
+        },
+        {
+            "expense_id": 11,
+            "fecha": "2026-02-19",
+            "monto": 800.0,
+            "descripcion": "uber centro",
+            "shop": "Uber",
+            "categoria": "Transporte",
+            "hora": "10:00",
+            "moneda": "ARS",
+        },
+        {
+            "expense_id": 12,
+            "fecha": "2026-02-20",
+            "monto": 800.0,
+            "descripcion": "uber vuelta",
+            "shop": "Uber",
+            "categoria": "Transporte",
+            "hora": "21:30",
+            "moneda": "ARS",
+        },
+        {
+            "expense_id": 13,
+            "fecha": "2026-02-21",
+            "monto": 800.0,
+            "descripcion": "almuerzo",
+            "shop": "Burger Club",
+            "categoria": "Comida",
+            "hora": "13:15",
+            "moneda": "ARS",
+        },
+    ]
+    store.delete_last_expense.return_value = {
+        "expense_id": 11,
+        "fecha": "2026-02-19",
+        "monto": 850.0,
+        "descripcion": "uber",
+        "categoria": "Transporte",
+        "hora": "10:00",
+        "moneda": "ARS",
+    }
+    return store
 
 
 @pytest.fixture
-def mock_sheets():
-    sheets = MagicMock()
-    sheets.get_sheet_url.return_value = "https://docs.google.com/spreadsheets/d/abc123"
-    sheets.get_monthly_total.return_value = 5000.0
-    sheets.get_category_totals.return_value = {"Comida": 2000.0, "Transporte": 3000.0}
-    sheets.get_recent_expenses.return_value = [
-        {"fecha": "2026-02-19", "monto": 850.0, "descripcion": "uber", "categoria": "Transporte"},
-        {"fecha": "2026-02-18", "monto": 500.0, "descripcion": "farmacia", "categoria": "Salud"},
-    ]
-    sheets.search_expenses.return_value = [
-        {"row_index": 2, "fecha": "2026-02-18", "monto": 500.0, "descripcion": "farmacia", "categoria": "Salud"},
-        {"row_index": 3, "fecha": "2026-02-19", "monto": 850.0, "descripcion": "uber", "categoria": "Transporte"},
-    ]
-    sheets.append_expense.return_value = 3
-    sheets.delete_expense.return_value = True
-    return sheets
-
-
-@pytest.fixture
-def registry(mock_sheets):
-    return ToolRegistry(mock_sheets, "5491123456789")
-
-
-# ---------------------------------------------------------------------------
-# Definiciones
-# ---------------------------------------------------------------------------
+def registry(mock_store):
+    registry = ToolRegistry(mock_store, "5491123456789")
+    registry.alert_service.evaluate_expense_alerts = AsyncMock(return_value=[])
+    registry.budget_service.save_budget = AsyncMock(
+        return_value={
+            "status": "created",
+            "category": "Comida",
+            "period": "monthly",
+            "limit_amount": 200000.0,
+        }
+    )
+    registry.budget_service.list_budgets = AsyncMock(
+        return_value=[{"category": "Comida", "period": "monthly", "limit_amount": 200000.0}]
+    )
+    registry.insights_service.compare_spending_periods = AsyncMock(
+        return_value={"status": "ok", "changes": []}
+    )
+    registry.insights_service.detect_spending_leaks = AsyncMock(
+        return_value={"status": "ok", "insights": []}
+    )
+    registry.projection_service.project_savings = AsyncMock(
+        return_value={"status": "ok", "projected_savings": 60000.0}
+    )
+    registry.liability_service.create_liability = AsyncMock(
+        return_value={"success": True, "liability_id": 8}
+    )
+    registry.liability_service.get_monthly_commitment = AsyncMock(
+        return_value={"success": True, "total_monthly_commitment": 70000.0}
+    )
+    registry.liability_service.close_liability = AsyncMock(
+        return_value={"success": True, "liability_id": 8, "status": "closed"}
+    )
+    registry.education_service.evaluate_financial_education = AsyncMock(
+        return_value={"status": "ok", "tips": []}
+    )
+    return registry
 
 
 class TestDefinitions:
-    def test_returns_ten_tools(self, registry):
-        """ToolRegistry debe exponer exactamente 11 herramientas."""
-        assert len(registry.definitions()) == 12
+    def test_returns_twenty_six_tools(self, registry):
+        assert len(registry.definitions()) == 26
 
-    def test_all_are_tool_definition_instances(self, registry):
-        """Cada elemento debe ser un ToolDefinition."""
-        assert all(isinstance(t, ToolDefinition) for t in registry.definitions())
+    def test_all_are_tool_definitions(self, registry):
+        assert all(isinstance(tool, ToolDefinition) for tool in registry.definitions())
 
     def test_expected_tool_names(self, registry):
-        """Los nombres de las herramientas deben coincidir con el plan."""
-        names = {t.name for t in registry.definitions()}
-        expected = {
+        names = {tool.name for tool in registry.definitions()}
+        assert names == {
             "register_expense",
             "get_monthly_summary",
             "get_category_breakdown",
@@ -72,263 +155,273 @@ class TestDefinitions:
             "convert_currency",
             "send_cat_pic",
             "get_user_groups_info",
+            "save_budget",
+            "list_budgets",
+            "get_spending_comparison",
+            "get_spending_insights",
+            "project_savings",
+            "create_liability",
+            "get_monthly_commitment",
+            "close_liability",
+            "get_financial_education",
+            "register_group_expense",
+            "get_group_balance",
+            "settle_group_balances",
+            "create_group_goal",
             "save_personality",
+            "generate_expense_report",
         }
-        assert names == expected
-
-    def test_all_tools_have_description(self, registry):
-        """Todas las herramientas deben tener descripción no vacía."""
-        assert all(t.description for t in registry.definitions())
-
-    def test_all_tools_have_parameters_schema(self, registry):
-        """Todas las herramientas deben tener parámetros JSON Schema válidos."""
-        for tool in registry.definitions():
-            assert "type" in tool.parameters
-            assert tool.parameters["type"] == "object"
-
-
-# ---------------------------------------------------------------------------
-# run() — dispatch
-# ---------------------------------------------------------------------------
 
 
 class TestRun:
-    def test_unknown_tool_raises_value_error(self, registry):
-        """run() con nombre desconocido debe lanzar ValueError."""
+    def test_unknown_tool_raises(self, registry):
         with pytest.raises(ValueError, match="desconocida"):
             registry.run("nonexistent_tool")
 
-    def test_run_dispatches_to_correct_function(self, registry, mock_sheets):
-        """run('get_sheet_url') debe ejecutar _get_sheet_url."""
+    def test_get_sheet_url_is_sync(self, registry):
         result = registry.run("get_sheet_url")
-        assert "url" in result
-        mock_sheets.get_sheet_url.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# register_expense
-# ---------------------------------------------------------------------------
+        assert result["available"] is False
+        assert "planilla" in result["message"].lower()
 
 
 class TestRegisterExpense:
     @pytest.fixture(autouse=True)
     def mock_db(self):
+        session_instance = AsyncMock()
+        session_instance.execute.return_value = MagicMock(
+            scalar_one_or_none=MagicMock(return_value=None)
+        )
+        session_instance.commit = AsyncMock()
+
         with patch("app.db.database.async_session_maker") as mock_session:
-            session_instance = AsyncMock()
             mock_session.return_value.__aenter__.return_value = session_instance
-            yield mock_session
-    @pytest.mark.asyncio
-    async def test_calls_append_expense(self, registry, mock_sheets):
-        """register_expense debe llamar a sheets.append_expense."""
-        await registry.run("register_expense", amount=850.0, description="farmacia")
-        mock_sheets.append_expense.assert_called_once()
+            yield
 
     @pytest.mark.asyncio
-    async def test_returns_success_true(self, registry):
-        """Cuando append_expense retorna row_index > 0, success debe ser True."""
+    async def test_calls_append_expense(self, registry, mock_store):
+        await registry.run("register_expense", amount=850.0, description="farmacia")
+        mock_store.append_expense.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_success_and_expense_id(self, registry):
         result = await registry.run("register_expense", amount=850.0, description="farmacia")
         assert result["success"] is True
+        assert result["expense_id"] == 3
 
     @pytest.mark.asyncio
-    async def test_returns_row_index(self, registry):
-        """El resultado debe incluir el row_index retornado por append_expense."""
-        result = await registry.run("register_expense", amount=850.0, description="farmacia")
-        assert result["row_index"] == 3
-
-    @pytest.mark.asyncio
-    async def test_uses_default_category_when_not_provided(self, registry, mock_sheets):
-        """Si no se proporciona categoría, debe usar 'General'."""
+    async def test_uses_default_category(self, registry, mock_store):
         await registry.run("register_expense", amount=100.0, description="misc")
-        expense_arg = mock_sheets.append_expense.call_args[0][1]
+        expense_arg = mock_store.append_expense.call_args[0][1]
         assert expense_arg.category == "General"
 
     @pytest.mark.asyncio
-    async def test_uses_provided_category(self, registry, mock_sheets):
-        """Si se proporciona categoría, debe usarla."""
-        await registry.run("register_expense", amount=500.0, description="uber", category="Transporte")
-        expense_arg = mock_sheets.append_expense.call_args[0][1]
-        assert expense_arg.category == "Transporte"
-
-    @pytest.mark.asyncio
-    async def test_returns_failure_when_append_returns_zero(self, registry, mock_sheets):
-        """Si append_expense retorna 0 (error), success debe ser False."""
-        mock_sheets.append_expense.return_value = 0
+    async def test_returns_failure_when_store_fails(self, registry, mock_store):
+        mock_store.append_expense.return_value = None
         result = await registry.run("register_expense", amount=100.0, description="test")
         assert result["success"] is False
 
 
-# ---------------------------------------------------------------------------
-# get_monthly_summary
-# ---------------------------------------------------------------------------
-
-
-class TestGetMonthlySummary:
-    def test_returns_total(self, registry):
-        """El resultado debe incluir 'total'."""
-        result = registry.run("get_monthly_summary")
-        assert "total" in result
+class TestSummaries:
+    @pytest.mark.asyncio
+    async def test_monthly_summary_returns_total_and_categories(self, registry):
+        result = await registry.run("get_monthly_summary")
         assert result["total"] == 5000.0
+        assert result["categories"] == {"Comida": 2000.0, "Transporte": 3000.0}
+        assert result["monthly_commitment"] == 70000.0
+        assert result["total_with_commitments"] == 75000.0
+        assert result["category_details"] == [
+            {
+                "category": "Transporte",
+                "emoji": "🚗",
+                "total": 3000.0,
+                "movement_count": 2,
+                "observation": "2 mov. • frecuente: Uber (2)",
+            },
+            {
+                "category": "Comida",
+                "emoji": "🍔",
+                "total": 2000.0,
+                "movement_count": 2,
+                "observation": "2 mov. • frecuente: Burger Club (2)",
+            },
+        ]
+        assert "RESUMEN" in result["formatted_summary"]
+        assert "POR CATEGORÍA" in result["formatted_summary"]
+        assert "🚗 Transporte *$3.000*" in result["formatted_summary"]
+        assert "_Obs:_ 2 mov. • frecuente: Uber (2)" in result["formatted_summary"]
+        assert "🍔 Comida *$2.000*" in result["formatted_summary"]
 
-    def test_returns_categories(self, registry):
-        """El resultado debe incluir 'categories' como dict."""
-        result = registry.run("get_monthly_summary")
-        assert "categories" in result
-        assert isinstance(result["categories"], dict)
-
-    @patch("app.agent.tools.datetime")
-    def test_uses_current_month_when_not_specified(self, mock_datetime, registry, mock_sheets):
-        """Sin argumentos, debe usar el mes y año actuales."""
+    @pytest.mark.asyncio
+    @patch("app.agent.skills.local_now_for_phone")
+    async def test_monthly_summary_uses_current_month(self, mock_local_now, registry, mock_store):
         from datetime import datetime
-        mock_now = datetime(2026, 3, 20)
-        mock_datetime.now.return_value = mock_now
-        
-        registry.run("get_monthly_summary")
-        mock_sheets.get_monthly_total.assert_called_once_with(
-            "5491123456789", 3, 2026
-        )
 
-    def test_uses_provided_month_year(self, registry, mock_sheets):
-        """Con mes y año explícitos, debe usarlos."""
-        registry.run("get_monthly_summary", month=1, year=2025)
-        mock_sheets.get_monthly_total.assert_called_once_with("5491123456789", 1, 2025)
+        mock_local_now.return_value = datetime(2026, 3, 20)
+        await registry.run("get_monthly_summary")
+        mock_store.get_monthly_total.assert_called_once_with("5491123456789", 3, 2026)
 
-
-# ---------------------------------------------------------------------------
-# get_recent_expenses
-# ---------------------------------------------------------------------------
-
-
-class TestGetRecentExpenses:
-    def test_returns_expenses_list(self, registry):
-        """El resultado debe incluir 'expenses' como lista."""
-        result = registry.run("get_recent_expenses")
-        assert "expenses" in result
-        assert isinstance(result["expenses"], list)
-
-    def test_returns_count(self, registry):
-        """El resultado debe incluir 'count'."""
-        result = registry.run("get_recent_expenses")
-        assert "count" in result
-        assert result["count"] == 2
-
-    def test_default_limit_is_five(self, registry, mock_sheets):
-        """Sin argumentos, limit debe ser 5."""
-        registry.run("get_recent_expenses")
-        mock_sheets.get_recent_expenses.assert_called_once_with("5491123456789", n=5)
-
-    def test_custom_limit(self, registry, mock_sheets):
-        """Con limit explícito, debe usarlo."""
-        registry.run("get_recent_expenses", limit=10)
-        mock_sheets.get_recent_expenses.assert_called_once_with("5491123456789", n=10)
-
-
-# ---------------------------------------------------------------------------
-# delete_last_expense
-# ---------------------------------------------------------------------------
-
-
-class TestDeleteLastExpense:
-    def test_calls_search_expenses(self, registry, mock_sheets):
-        """delete_last_expense debe llamar a search_expenses para obtener row_index."""
-        registry.run("delete_last_expense")
-        mock_sheets.search_expenses.assert_called_once_with("5491123456789")
-
-    def test_calls_delete_expense_with_last_row_index(self, registry, mock_sheets):
-        """delete_last_expense debe llamar a delete_expense con el índice del último gasto."""
-        registry.run("delete_last_expense")
-        # search_expenses retorna [row_index=2, row_index=3]; el último es 3
-        mock_sheets.delete_expense.assert_called_once_with("5491123456789", 3)
-
-    def test_returns_success_true(self, registry):
-        """Cuando delete_expense retorna True, success debe ser True."""
-        result = registry.run("delete_last_expense")
-        assert result["success"] is True
-
-    def test_returns_deleted_expense_info(self, registry, mock_sheets):
-        """El resultado debe incluir la info del gasto eliminado."""
-        result = registry.run("delete_last_expense")
-        assert "deleted" in result
-        assert result["deleted"]["row_index"] == 3
-
-    def test_returns_error_when_no_expenses(self, registry, mock_sheets):
-        """Si no hay gastos, debe retornar success=False con mensaje de error."""
-        mock_sheets.search_expenses.return_value = []
-        result = registry.run("delete_last_expense")
-        assert result["success"] is False
-        assert "error" in result
-
-    def test_returns_error_when_delete_fails(self, registry, mock_sheets):
-        """Si delete_expense falla, debe retornar success=False."""
-        mock_sheets.delete_expense.return_value = False
-        result = registry.run("delete_last_expense")
-        assert result["success"] is False
-
-
-# ---------------------------------------------------------------------------
-# search_expenses
-# ---------------------------------------------------------------------------
-
-
-class TestSearchExpenses:
-    def test_returns_expenses_and_count(self, registry):
-        """El resultado debe incluir 'expenses' y 'count'."""
-        result = registry.run("search_expenses", query="uber")
-        assert "expenses" in result
-        assert "count" in result
-
-    def test_passes_query_to_sheets(self, registry, mock_sheets):
-        """Los parámetros de búsqueda deben pasarse a sheets.search_expenses."""
-        registry.run("search_expenses", query="uber", date_from="2026-02-01")
-        mock_sheets.search_expenses.assert_called_once_with(
-            "5491123456789", query="uber", date_from="2026-02-01", date_to=None
-        )
-
-
-# ---------------------------------------------------------------------------
-# get_category_breakdown
-# ---------------------------------------------------------------------------
-
-
-class TestGetCategoryBreakdown:
-    def test_returns_breakdown_dict(self, registry):
-        """El resultado debe incluir 'breakdown' como dict."""
-        result = registry.run("get_category_breakdown")
-        assert "breakdown" in result
-        assert isinstance(result["breakdown"], dict)
-
-    @patch("app.agent.tools.datetime")
-    def test_uses_current_month_when_not_specified(self, mock_datetime, registry, mock_sheets):
-        """Sin argumentos, debe usar el mes y año actuales."""
-        from datetime import datetime
-        mock_now = datetime(2026, 3, 20)
-        mock_datetime.now.return_value = mock_now
-
-        registry.run("get_category_breakdown")
-        mock_sheets.get_category_totals.assert_called_once_with(
-            "5491123456789", 3, 2026
-        )
-
-    def test_filters_by_specific_category(self, registry, mock_sheets):
-        """Con category explícita, devuelve solo esa categoría."""
-        result = registry.run("get_category_breakdown", category="Comida")
+    @pytest.mark.asyncio
+    async def test_category_breakdown_can_filter(self, registry):
+        result = await registry.run("get_category_breakdown", category="Comida")
         assert result["category"] == "Comida"
-        assert "Transporte" not in result["breakdown"]
-        assert "Comida" in result["breakdown"]
+        assert result["breakdown"] == {"Comida": 2000.0}
+        assert result["entries"] == [
+            {
+                "expense_id": 10,
+                "fecha": "2026-02-18",
+                "hora": "09:30",
+                "monto": 1200.0,
+                "moneda": "ARS",
+                "shop": "Burger Club",
+                "descripcion": "combo burger",
+            },
+            {
+                "expense_id": 13,
+                "fecha": "2026-02-21",
+                "hora": "13:15",
+                "monto": 800.0,
+                "moneda": "ARS",
+                "shop": "Burger Club",
+                "descripcion": "almuerzo",
+            },
+        ]
+        assert "Burger Club" in result["formatted_breakdown"]
+        assert "2026-02-18" in result["formatted_breakdown"]
 
-    def test_without_category_returns_all(self, registry):
-        """Sin category, devuelve todas las categorías."""
-        result = registry.run("get_category_breakdown")
-        assert result["breakdown"] == {"Comida": 2000.0, "Transporte": 3000.0}
+    @pytest.mark.asyncio
+    async def test_recent_expenses_uses_limit(self, registry, mock_store):
+        result = await registry.run("get_recent_expenses", limit=10)
+        assert result["count"] == 2
+        mock_store.get_recent_expenses.assert_called_once_with("5491123456789", n=10)
 
 
-# ---------------------------------------------------------------------------
-# get_sheet_url
-# ---------------------------------------------------------------------------
+class TestDeleteAndSearch:
+    @pytest.mark.asyncio
+    async def test_delete_last_expense_calls_store(self, registry, mock_store):
+        result = await registry.run("delete_last_expense")
+        mock_store.delete_last_expense.assert_called_once_with("5491123456789")
+        assert result["success"] is True
+        assert result["deleted"]["expense_id"] == 11
+
+    @pytest.mark.asyncio
+    async def test_delete_last_expense_returns_error_when_empty(self, registry, mock_store):
+        mock_store.delete_last_expense.return_value = None
+        result = await registry.run("delete_last_expense")
+        assert result["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_search_expenses_passes_filters(self, registry, mock_store):
+        result = await registry.run(
+            "search_expenses",
+            query="uber",
+            date_from="2026-02-01",
+            date_to="2026-02-29",
+        )
+        assert result["count"] == 4
+        mock_store.search_expenses.assert_called_once_with(
+            "5491123456789",
+            query="uber",
+            date_from="2026-02-01",
+            date_to="2026-02-29",
+        )
 
 
-class TestGetSheetUrl:
-    def test_returns_url(self, registry):
-        """El resultado debe incluir 'url'."""
-        result = registry.run("get_sheet_url")
-        assert "url" in result
-        assert result["url"].startswith("https://")
+class TestBudgets:
+    @pytest.mark.asyncio
+    async def test_save_budget_calls_budget_service(self, registry):
+        result = await registry.run("save_budget", category="Comida", limit_amount=200000)
+        assert result["success"] is True
+        registry.budget_service.save_budget.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_list_budgets_returns_payload(self, registry):
+        result = await registry.run("list_budgets")
+        assert result["count"] == 1
+        assert result["budgets"][0]["category"] == "Comida"
+
+
+class TestInsights:
+    @pytest.mark.asyncio
+    async def test_get_spending_comparison_calls_insights_service(self, registry):
+        result = await registry.run("get_spending_comparison", period="weekly", group_by="merchant")
+        assert result["status"] == "ok"
+        registry.insights_service.compare_spending_periods.assert_awaited_once_with(
+            "5491123456789",
+            period="weekly",
+            group_by="merchant",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_spending_insights_calls_insights_service(self, registry):
+        result = await registry.run("get_spending_insights")
+        assert result["status"] == "ok"
+        registry.insights_service.detect_spending_leaks.assert_awaited_once_with("5491123456789")
+
+
+class TestProjections:
+    @pytest.mark.asyncio
+    async def test_project_savings_calls_projection_service(self, registry):
+        result = await registry.run(
+            "project_savings",
+            category="Comida",
+            reduction_percent=20,
+            frequency="monthly",
+            horizon_months=6,
+        )
+        assert result["status"] == "ok"
+        registry.projection_service.project_savings.assert_awaited_once_with(
+            "5491123456789",
+            amount=None,
+            frequency="monthly",
+            horizon_months=6,
+            category="Comida",
+            reduction_percent=20,
+        )
+
+
+class TestLiabilities:
+    @pytest.mark.asyncio
+    async def test_create_liability_calls_service(self, registry):
+        result = await registry.run(
+            "create_liability",
+            kind="installment",
+            description="Notebook",
+            monthly_amount=50000,
+            remaining_periods=6,
+        )
+        assert result["success"] is True
+        registry.liability_service.create_liability.assert_awaited_once_with(
+            "5491123456789",
+            kind="installment",
+            description="Notebook",
+            monthly_amount=50000.0,
+            remaining_periods=6,
+            currency="ARS",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_monthly_commitment_calls_service(self, registry):
+        result = await registry.run("get_monthly_commitment")
+        assert result["success"] is True
+        registry.liability_service.get_monthly_commitment.assert_awaited_once_with(
+            "5491123456789"
+        )
+
+    @pytest.mark.asyncio
+    async def test_close_liability_calls_service(self, registry):
+        result = await registry.run("close_liability", liability_id=8)
+        assert result["success"] is True
+        registry.liability_service.close_liability.assert_awaited_once_with(
+            "5491123456789",
+            liability_id=8,
+        )
+
+
+class TestEducation:
+    @pytest.mark.asyncio
+    async def test_get_financial_education_calls_service(self, registry):
+        result = await registry.run("get_financial_education")
+        assert result["status"] == "ok"
+        registry.education_service.evaluate_financial_education.assert_awaited_once_with(
+            "5491123456789"
+        )

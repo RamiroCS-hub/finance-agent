@@ -25,7 +25,15 @@
       "Bash(git checkout:*)",
       "Bash(git rebase:*)",
       "Bash(GIT_EDITOR=true git rebase --continue)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(sips -z 32 32 /Users/rcarnicer/Desktop/finance_org_wpp/frontend-claude/logo.png --out /Users/rcarnicer/Desktop/finance_org_wpp/frontend-claude/favicon-32.png)",
+      "Bash(sips -z 16 16 /Users/rcarnicer/Desktop/finance_org_wpp/frontend-claude/logo.png --out /Users/rcarnicer/Desktop/finance_org_wpp/frontend-claude/favicon-16.png)",
+      "Bash(git push:*)",
+      "Bash(sips:*)",
+      "Bash(find /Users/rcarnicer/Desktop -name *.git -type d -maxdepth 3)",
+      "Bash(find /Users/rcarnicer -name gitdir -path */worktrees/*)",
+      "Bash(grep -r \"jolly-williamson\\\\|finance_org_wpp\" /Users/rcarnicer/Desktop/ --include=* -l)",
+      "Bash(grep -r \"jolly-williamson\\\\|finance_org_wpp\" /Users/rcarnicer/ --include=*.git* -l)"
     ]
   }
 }

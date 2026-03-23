@@ -1,0 +1,130 @@
+{
+  "feature": "002-supabase-deploy-readiness",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Modelar configuracion compatible con Supabase",
+      "description": "Actualizar settings y defaults de base de datos para soportar un deploy contra Supabase Postgres sin hacks manuales.",
+      "files": [
+        "app/config.py",
+        "tests/test_config.py"
+      ],
+      "acceptance_criteria": [
+        "La configuracion acepta una DATABASE_URL de Supabase sin transformaciones manuales fuera del codigo",
+        "Los tests cubren carga de variables criticas de entorno",
+        "El backend mantiene compatibilidad con el entorno local existente"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Ajustar bootstrap async de base de datos",
+      "description": "Revisar engine y session maker para conexiones estables contra Supabase y documentar cualquier opcion obligatoria de SSL o pooling.",
+      "files": [
+        "app/db/database.py",
+        "tests/test_db_connection.py"
+      ],
+      "acceptance_criteria": [
+        "El engine puede inicializarse con configuracion compatible con Supabase",
+        "Existe al menos un smoke test de apertura de sesion",
+        "No se rompe el comportamiento local del entorno actual"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-001"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Validar migraciones sobre el target de deploy",
+      "description": "Revisar Alembic y dejar documentado el flujo exacto de migracion para proyectos nuevos o existentes en Supabase.",
+      "files": [
+        "migrations/env.py",
+        "migrations/README",
+        "tests/test_migrations.py"
+      ],
+      "acceptance_criteria": [
+        "Las migraciones pueden ejecutarse contra una base compatible con Supabase",
+        "La documentacion indica el comando exacto de migracion",
+        "El smoke test falla de forma accionable si el esquema no esta aplicado"
+      ],
+      "spec_refs": [
+        "#REQ-02"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Escribir guia operativa de despliegue",
+      "description": "Agregar documentacion canonica con contrato de despliegue, checklist, secretos y smoke checks para Supabase readiness.",
+      "files": [
+        "README.md",
+        "docs/deploy/supabase.md"
+      ],
+      "acceptance_criteria": [
+        "La guia distingue claramente base de datos administrada de runtime web externo",
+        "Existe una checklist minima de entorno y verificaciones",
+        "La ruta de despliegue puede seguirse sin leer codigo fuente"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-001"
+      ],
+      "depends_on": [
+        "1",
+        "2",
+        "3"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "5",
+      "title": "Ejecutar smoke test de readiness",
+      "description": "Correr la validacion final del flujo de arranque y registrar el resultado del deploy readiness.",
+      "files": [
+        "sdd/wip/002-supabase-deploy-readiness/4-implementation/progress.md"
+      ],
+      "acceptance_criteria": [
+        "Existe evidencia de una corrida de smoke test sobre la conexion",
+        "El resultado deja claro si la app esta lista o que gap queda pendiente",
+        "La ultima validacion puede repetirse por otro operador"
+      ],
+      "spec_refs": [
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "4"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "completed": 0,
+    "pending": 5,
+    "tdd_tasks": 3
+  }
+}

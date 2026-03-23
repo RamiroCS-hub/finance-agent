@@ -1,0 +1,111 @@
+{
+  "feature": "006-receipt-ocr-from-images",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Crear servicio OCR para tickets",
+      "description": "Implementar el adaptador al proveedor OCR/vision y su configuracion.",
+      "files": [
+        "app/services/receipt_ocr.py",
+        "app/config.py",
+        "tests/test_receipt_ocr.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio puede recibir bytes de imagen y devolver un payload estructurado",
+        "La configuracion del proveedor queda externalizada",
+        "Los tests cubren respuesta exitosa y error del proveedor"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Normalizar resultado OCR con score de confianza",
+      "description": "Agregar una capa de normalizacion y compuerta de confianza para monto, comercio y categoria.",
+      "files": [
+        "app/services/receipt_ocr.py",
+        "tests/test_receipt_ocr.py"
+      ],
+      "acceptance_criteria": [
+        "El payload OCR se transforma en un candidato consistente",
+        "Existe un criterio de confianza alto, medio y bajo",
+        "Los tests cubren datos ambiguos y faltantes"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Integrar OCR al flujo de imagen del webhook",
+      "description": "Modificar el procesamiento de imagen para descargar, extraer, pedir confirmacion o registrar.",
+      "files": [
+        "app/api/webhook.py",
+        "app/services/whatsapp.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "Una imagen valida deja de responder con el stub actual",
+        "Los casos de baja confianza piden confirmacion o hacen fallback seguro",
+        "Los tests cubren imagen exitosa y OCR fallido"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Conectar el registro final al flujo existente",
+      "description": "Persistir el gasto detectado usando la misma ruta de registro y cubrir la integracion con resumenes y busquedas.",
+      "files": [
+        "app/agent/tools.py",
+        "tests/integration/test_agent_loop.py",
+        "tests/test_tools.py"
+      ],
+      "acceptance_criteria": [
+        "El gasto OCR entra al mismo storage que texto y audio",
+        "Los resumenes posteriores incluyen el gasto registrado",
+        "No se generan duplicados ante errores de persistencia"
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "completed": 0,
+    "pending": 4,
+    "tdd_tasks": 4
+  }
+}

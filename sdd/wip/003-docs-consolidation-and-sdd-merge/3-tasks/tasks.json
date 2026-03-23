@@ -1,0 +1,132 @@
+{
+  "feature": "003-docs-consolidation-and-sdd-merge",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Inventariar documentacion existente",
+      "description": "Clasificar README, docs, openspec y sdd en setup, operativo, roadmap vivo o historico antes de mover archivos.",
+      "files": [
+        "README.md",
+        "docs",
+        "openspec",
+        "sdd"
+      ],
+      "acceptance_criteria": [
+        "Existe un inventario de documentos y su destino canonico",
+        "Cada documento queda clasificado como vivo, migrable o historico",
+        "No se elimina contenido sin tener destino o justificacion"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "2",
+      "title": "Reescribir indice principal del repo",
+      "description": "Actualizar README para usarlo como puerta de entrada y enlazar las ubicaciones canonicas nuevas.",
+      "files": [
+        "README.md"
+      ],
+      "acceptance_criteria": [
+        "README direcciona setup, deploy y features activas a sus rutas canonicas",
+        "La ruta de onboarding puede seguirse solo desde README",
+        "README deja de duplicar detalles extensos de planning"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "3",
+      "title": "Migrar contenido util desde openspec",
+      "description": "Pasar a `sdd/` o `docs/` el contenido vigente de openspec y dejar marcada la naturaleza historica del resto.",
+      "files": [
+        "openspec",
+        "docs",
+        "sdd"
+      ],
+      "acceptance_criteria": [
+        "La informacion vigente de openspec tiene una nueva ubicacion canonica",
+        "Lo historico queda marcado sin competir con sdd",
+        "La estructura final evita fuentes paralelas de verdad"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "4",
+      "title": "Ordenar docs operativas por tema",
+      "description": "Crear o consolidar subcarpetas de `docs/` para setup, deploy y runbooks tecnicos.",
+      "files": [
+        "docs"
+      ],
+      "acceptance_criteria": [
+        "Las docs operativas quedan agrupadas en una taxonomia simple",
+        "La estructura resulta consistente para nuevos colaboradores",
+        "No quedan docs de setup mezcladas con artefactos SDD"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "2",
+        "3"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "5",
+      "title": "Validar navegacion final de documentacion",
+      "description": "Hacer un smoke test manual del recorrido README -> docs -> sdd y registrar cualquier enlace roto o ambiguedad.",
+      "files": [
+        "sdd/wip/003-docs-consolidation-and-sdd-merge/4-implementation/progress.md"
+      ],
+      "acceptance_criteria": [
+        "El recorrido principal de lectura se puede completar sin abrir rutas obsoletas",
+        "Cualquier enlace roto queda corregido o anotado",
+        "La evidencia de validacion queda registrada"
+      ],
+      "spec_refs": [
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "4"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "completed": 0,
+    "pending": 5,
+    "tdd_tasks": 0
+  }
+}

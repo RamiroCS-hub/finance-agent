@@ -1,0 +1,110 @@
+{
+  "feature": "007-intelligent-budget-alerts",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Agregar modelo y persistencia de presupuestos",
+      "description": "Crear entidad de reglas de presupuesto y su acceso relacional.",
+      "files": [
+        "app/db/models.py",
+        "migrations/versions",
+        "tests/test_db_models.py"
+      ],
+      "acceptance_criteria": [
+        "Existe una entidad para presupuestos por usuario y categoria",
+        "La migracion crea el schema necesario",
+        "Los tests cubren la persistencia base"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Implementar servicio de presupuestos",
+      "description": "Crear logica para guardar y listar presupuestos activos del usuario.",
+      "files": [
+        "app/services/budgets.py",
+        "tests/test_budgets.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio permite crear y consultar reglas vigentes",
+        "Las validaciones basicas de categoria y periodo quedan cubiertas",
+        "Los tests cubren alta y consulta"
+      ],
+      "spec_refs": [
+        "#REQ-01"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Implementar evaluador de alertas",
+      "description": "Agregar heuristicas de desvio de presupuesto y gasto anomalo sobre historial reciente.",
+      "files": [
+        "app/services/alerts.py",
+        "tests/test_alerts.py"
+      ],
+      "acceptance_criteria": [
+        "El evaluador detecta presupuesto excedido",
+        "El evaluador detecta picos cuando hay historial suficiente",
+        "Los tests cubren ausencia de alertas falsas"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-03",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Conectar alertas al flujo del agente",
+      "description": "Integrar presupuestos y alertas al registro de gastos y a las tools conversacionales.",
+      "files": [
+        "app/agent/tools.py",
+        "app/agent/core.py",
+        "tests/test_tools.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "El agente puede guardar y consultar presupuestos",
+        "Una alerta relevante aparece tras un gasto correspondiente",
+        "El flujo principal no se rompe si no hay alertas"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "completed": 0,
+    "pending": 4,
+    "tdd_tasks": 4
+  }
+}

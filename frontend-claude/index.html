@@ -18,237 +18,83 @@
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
-
-  <!-- Navbar -->
   <nav class="navbar">
     <div class="container nav-content">
-      <a href="#" class="logo">
+      <a href="#waitlist" class="logo">
         <img src="logo.png" alt="Anotamelo" class="logo-img">
         <span class="logo-text">Anotamelo</span>
       </a>
       <ul class="nav-links">
-        <li><a href="#features">Funciones</a></li>
-        <li><a href="#financial-help">Finanzas</a></li>
-        <li><a href="#education">Educación</a></li>
-        <li><a href="#groups">En grupo</a></li>
+        <li><a href="#features">Qué hace</a></li>
         <li><a href="#demo">Demo</a></li>
+        <li><a href="#waitlist">Acceso</a></li>
       </ul>
-      <a href="#waitlist" class="btn btn-nav">Unirme a la waitlist</a>
-      <button class="mobile-menu-btn" aria-label="Menú">
+      <a href="#waitlist" class="btn btn-nav">Quiero acceso</a>
+      <button class="mobile-menu-btn" aria-label="Menú" aria-expanded="false" aria-controls="nav-links">
         <span></span><span></span><span></span>
       </button>
     </div>
   </nav>
 
-  <!-- Hero -->
-  <section class="hero">
-    <div class="container hero-content">
-      <div class="hero-text">
-        <span class="hero-badge">Beta privada</span>
-        <h1>Controlá tus gastos <br>desde <span class="highlight">WhatsApp</span></h1>
-        <p class="hero-subtitle">
-          Mandale un mensaje a <strong>Anotamelo</strong> con tus gastos y él los organiza,
-          calcula y resume por vos. Sin apps extra, sin planillas manuales.
-        </p>
-        <div class="hero-ctas">
-          <a href="#waitlist" class="btn btn-primary btn-lg">Quiero acceso</a>
-          <a href="#demo" class="btn btn-outline btn-lg">Ver cómo funciona</a>
+  <main>
+    <section id="waitlist" class="hero section-anchor">
+      <div class="hero-backdrop"></div>
+      <div class="container hero-content">
+        <div class="hero-copy">
+          <span class="hero-badge">Beta privada</span>
+          <h1>Registrá gastos desde WhatsApp y entendé tu plata en segundos.</h1>
+          <p class="hero-subtitle">
+            Le escribís como siempre, <strong>Anotamelo</strong> registra, resume y te devuelve contexto útil.
+            Sin app extra, sin planillas, sin abrir otra cosa.
+          </p>
+          <div class="hero-points">
+            <span>Texto, audio y tickets</span>
+            <span>Resúmenes automáticos</span>
+            <span>Alertas y proyecciones</span>
+          </div>
+          <div class="hero-ctas">
+            <a href="#waitlist-form" class="btn btn-primary btn-lg">Unirme a la waitlist</a>
+            <a href="#demo" class="btn btn-outline btn-lg">Ver demo</a>
+          </div>
+          <p class="hero-note">Gratis durante la beta. Sin tarjeta de crédito.</p>
         </div>
-        <p class="hero-note">Gratis durante la beta. Sin tarjeta de crédito.</p>
-      </div>
-      <div class="hero-visual">
-        <div class="phone-mockup">
-          <div class="phone-notch"></div>
-          <div class="chat-header">
-            <div class="chat-avatar"><img src="logo.png" alt="Anotamelo" class="avatar-img"></div>
-            <div>
-              <div class="chat-name">Anotamelo</div>
-              <div class="chat-status">en línea</div>
+
+        <div class="hero-side">
+          <div class="waitlist-card animate-on-scroll">
+            <div class="waitlist-copy">
+              <span class="section-badge">Acceso anticipado</span>
+              <h2>Entrá primero</h2>
+              <p>Dejá tu email y te avisamos cuando abramos nuevos cupos.</p>
             </div>
-          </div>
-          <div class="chat-body">
-            <div class="chat-bubble user">850 uber al centro</div>
-            <div class="chat-bubble bot">
-              ✅ Registré <strong>$850</strong> en uber (Transporte) 🚗
-            </div>
-            <div class="chat-bubble user">cuánto gasté este mes?</div>
-            <div class="chat-bubble bot">
-              Total marzo: <strong>$45.300</strong><br>
-              🍔 Comida <strong>$12k</strong><br>
-              🚗 Transporte <strong>$8k</strong><br>
-              🛒 Super <strong>$15k</strong><br>
-              📦 Otros <strong>$10.3k</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- Features -->
-  <section id="features" class="features">
-    <div class="container">
-      <span class="section-badge">Funciones</span>
-      <h2 class="section-title">Todo lo que necesitás para<br>controlar tu plata</h2>
-      <p class="section-subtitle">Sin descargar nada. Solo WhatsApp.</p>
-
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">💬</div>
-          <h3>Lenguaje natural</h3>
-          <p>Escribí como hablás: "850 uber", "2500 farmacia", "almuerzo con amigos 3200". Anotamelo entiende todo.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h3>Resúmenes automáticos</h3>
-          <p>Pedile "cuánto gasté" y te da el total del mes con desglose por categoría y emojis.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">💱</div>
-          <h3>Multi-moneda</h3>
-          <p>Gastaste en USD, UYU, CLP o COP? Anotamelo convierte automáticamente a ARS y registra ambos montos.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">🎙️</div>
-          <h3>Audios de WhatsApp</h3>
-          <p>Mandá un audio diciendo tu gasto. Anotamelo lo transcribe con IA y registra como si fuera texto. Ideal cuando tenés las manos ocupadas.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">📸</div>
-          <h3>Fotos de tickets</h3>
-          <p>Sacá una foto al ticket o comprobante. Anotamelo extrae automáticamente el monto, el comercio y la categoría. Sin tipear nada.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">🎯</div>
-          <h3>Metas de ahorro</h3>
-          <p>Configurá metas personales o grupales. Anotamelo trackea tu progreso y te avisa cuando llegás.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">🧮</div>
-          <h3>Calculadora inteligente</h3>
-          <p>IVA, propinas, divisiones entre amigos. Decile "1500 dividido 3" y registra el monto correcto.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">👥</div>
-          <h3>Gastos en grupo</h3>
-          <p>Creá un grupo con amigos o familia. Todos registran gastos compartidos y Anotamelo calcula quién le debe a quién al instante.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">📚</div>
-          <h3>Educación financiera</h3>
-          <p>Recibí insights personalizados, alertas de gastos inusuales y consejos para mejorar tus finanzas basados en tus propios datos.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Financial Help -->
-  <section id="financial-help" class="financial-help">
-    <div class="container">
-      <span class="section-badge">Impacto real</span>
-      <h2 class="section-title">Tu asistente financiero,<br>no solo un registro</h2>
-      <p class="section-subtitle">Anotamelo no se limita a guardar datos — te ayuda activamente a mejorar tu situación económica.</p>
-
-      <div class="fh-grid">
-        <div class="fh-card fh-accent">
-          <div class="fh-icon">🔔</div>
-          <h3>Alertas inteligentes</h3>
-          <p>Te avisa cuando superás tu presupuesto en una categoría, detecta gastos inusuales y te muestra cuando un gasto es más alto que tu promedio.</p>
-          <div class="fh-example">
-            <div class="fh-msg">⚠️ Gastaste 40% más en delivery esta semana que tu promedio. ¿Querés ajustar el presupuesto?</div>
-          </div>
-        </div>
-
-        <div class="fh-card">
-          <div class="fh-icon">📉</div>
-          <h3>Detecta dónde perdés plata</h3>
-          <p>Visualizá exactamente en qué gastás más y dónde hay margen para ahorrar. Comparativas semanales y mensuales automáticas.</p>
-          <div class="fh-example">
-            <div class="fh-msg">📊 En 3 meses gastaste $45k en suscripciones. 3 de ellas las usás menos de 2 veces/mes.</div>
-          </div>
-        </div>
-
-        <div class="fh-card">
-          <div class="fh-icon">🏆</div>
-          <h3>Proyecciones de ahorro</h3>
-          <p>Con base en tus patrones de gasto, Anotamelo proyecta cuánto podrías ahorrar si hacés pequeños ajustes. Metas concretas y alcanzables.</p>
-          <div class="fh-example">
-            <div class="fh-msg">🎯 Si reducís $500/semana en salidas, en 6 meses tenés $13.000 ahorrados.</div>
-          </div>
-        </div>
-
-        <div class="fh-card">
-          <div class="fh-icon">💳</div>
-          <h3>Control de deudas y cuotas</h3>
-          <p>Registrá compras en cuotas y Anotamelo te muestra el impacto real en tu presupuesto mensual. Nunca más sorpresas a fin de mes.</p>
-          <div class="fh-example">
-            <div class="fh-msg">💳 Tenés 4 cuotas de $2.800 y 3 de $1.500 pendientes. Compromiso fijo: $15.700/mes.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Financial Education -->
-  <section id="education" class="education">
-    <div class="container">
-      <span class="section-badge">Educación financiera</span>
-      <h2 class="section-title">Aprendé mientras registrás</h2>
-      <p class="section-subtitle">Cada interacción es una oportunidad para entender mejor tu plata.</p>
-
-      <div class="edu-layout">
-        <div class="edu-content">
-          <div class="edu-item">
-            <div class="edu-number">01</div>
-            <div class="edu-body">
-              <h3>Regla del 50/30/20</h3>
-              <p>Anotamelo te muestra si tus gastos se alinean con la regla clásica: 50% necesidades, 30% deseos, 20% ahorro. Con tus datos reales, no ejemplos genéricos.</p>
-              <div class="edu-bar-wrap">
-                <div class="edu-bar-label"><span>Necesidades</span><span class="edu-pct pct-needs">58%</span></div>
-                <div class="edu-bar"><div class="edu-fill fill-needs" style="width:58%"></div></div>
-                <div class="edu-bar-label"><span>Deseos</span><span class="edu-pct pct-wants">27%</span></div>
-                <div class="edu-bar"><div class="edu-fill fill-wants" style="width:27%"></div></div>
-                <div class="edu-bar-label"><span>Ahorro</span><span class="edu-pct pct-save">15%</span></div>
-                <div class="edu-bar"><div class="edu-fill fill-save" style="width:15%"></div></div>
+            <form id="waitlist-form" class="waitlist-form">
+              <div class="input-group">
+                <span class="input-icon">✉️</span>
+                <input
+                  type="email"
+                  id="email-input"
+                  placeholder="tu@email.com"
+                  required
+                  autocomplete="email"
+                >
               </div>
+              <button type="submit" class="btn btn-primary btn-lg btn-full">
+                <span class="btn-text">Quiero acceso</span>
+                <span class="btn-loading" hidden>Guardando...</span>
+              </button>
+            </form>
+
+            <div id="waitlist-success" class="waitlist-success" hidden>
+              <div class="success-icon">🎉</div>
+              <h3>Ya estás en la lista</h3>
+              <p>Te vamos a avisar por email cuando abramos nuevos accesos.</p>
             </div>
+
+            <div id="waitlist-error" class="waitlist-error" hidden></div>
+            <p class="waitlist-count">Te escribimos apenas haya lugar.</p>
           </div>
 
-          <div class="edu-item">
-            <div class="edu-number">02</div>
-            <div class="edu-body">
-              <h3>Fondo de emergencia</h3>
-              <p>¿Tenés 3 a 6 meses de gastos ahorrados? Anotamelo calcula cuánto necesitás según tu nivel de gasto real y te ayuda a construirlo paso a paso.</p>
-            </div>
-          </div>
-
-          <div class="edu-item">
-            <div class="edu-number">03</div>
-            <div class="edu-body">
-              <h3>Inflación y poder de compra</h3>
-              <p>Compará tus gastos mes a mes ajustados por inflación. Entendé si realmente estás gastando más o si es solo la suba de precios.</p>
-            </div>
-          </div>
-
-          <div class="edu-item">
-            <div class="edu-number">04</div>
-            <div class="edu-body">
-              <h3>Tips personalizados</h3>
-              <p>Semanalmente recibís 3 micro-tips basados en tus gastos reales. "Comprás café 4 veces por semana = $2.400/mes. Una cafetera te paga en 2 meses."</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="edu-phone">
-          <div class="phone-mockup phone-sm">
+          <div class="phone-mockup animate-on-scroll">
             <div class="phone-notch"></div>
             <div class="chat-header">
               <div class="chat-avatar"><img src="logo.png" alt="Anotamelo" class="avatar-img"></div>
@@ -258,253 +104,122 @@
               </div>
             </div>
             <div class="chat-body">
-              <div class="chat-bubble user">cómo estoy con mis finanzas?</div>
+              <div class="chat-bubble user">850 uber al centro</div>
+              <div class="chat-bubble bot">✅ Registré <strong>$850</strong> en Transporte.</div>
+              <div class="chat-bubble user">¿cómo vengo este mes?</div>
               <div class="chat-bubble bot">
-                📊 <strong>Análisis de marzo:</strong><br><br>
-                Tu distribución actual:<br>
-                🏠 Necesidades <strong>58%</strong> (ideal: 50%)<br>
-                🎉 Deseos <strong>27%</strong> (ideal: 30%)<br>
-                💰 Ahorro <strong>15%</strong> (ideal: 20%)<br><br>
-                💡 Si reducís $3k en delivery y alquilás menos streaming, llegás al 20% de ahorro.
+                Marzo: <strong>$45.300</strong><br>
+                🍔 Comida $12k<br>
+                🚗 Transporte $8k<br>
+                🛒 Super $15k
               </div>
-              <div class="chat-bubble user">cuánto necesito para fondo de emergencia?</div>
-              <div class="chat-bubble bot">
-                🛡️ Basado en tus gastos ($45k/mes), necesitás entre <strong>$135.000</strong> y <strong>$270.000</strong>.<br><br>
-                Tenés $80k ahorrados = 1.7 meses cubiertos.<br>
-                Ahorrando $8k/mes lo completás en <strong>7 meses</strong>. ¿Arrancamos esa meta?
-              </div>
+              <div class="chat-bubble user">mandé ticket y audio hoy</div>
+              <div class="chat-bubble bot">También leo tickets, audios y gastos en grupo.</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Group Expenses -->
-  <section id="groups" class="groups">
-    <div class="container">
-      <span class="section-badge">Gastos en grupo</span>
-      <h2 class="section-title">Dividir la cuenta,<br>sin las peleas</h2>
-      <p class="section-subtitle">Viajes, departamento compartido, salidas con amigos. Un grupo en WhatsApp y Anotamelo hace las cuentas.</p>
-
-      <div class="groups-layout">
-        <div class="groups-features">
-          <div class="group-feat">
-            <div class="gf-icon">🏠</div>
-            <div>
-              <h3>Gastos del departamento</h3>
-              <p>Expensas, luz, internet, super. Cada roommate registra sus gastos y al final del mes Anotamelo muestra el balance exacto.</p>
-            </div>
-          </div>
-          <div class="group-feat">
-            <div class="gf-icon">✈️</div>
-            <div>
-              <h3>Viajes grupales</h3>
-              <p>Cargá los gastos del viaje a medida que pasan. Hotel, actividades, comidas. Anotamelo te dice cuánto pusiste vos y cuánto te deben (o debés).</p>
-            </div>
-          </div>
-          <div class="group-feat">
-            <div class="gf-icon">🍕</div>
-            <div>
-              <h3>Salidas y eventos</h3>
-              <p>Cena en grupo, asado, cumpleaños. Un mensaje por persona y Anotamelo calcula quién paga cuánto al final.</p>
-            </div>
-          </div>
-          <div class="group-feat">
-            <div class="gf-icon">💸</div>
-            <div>
-              <h3>Liquidación fácil</h3>
-              <p>Pedile "liquidar el grupo" y te da el resumen mínimo de transferencias para saldar todas las deudas entre todos los integrantes.</p>
-            </div>
-          </div>
+    <section id="features" class="proof section-anchor">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-badge">Qué resuelve</span>
+          <h2 class="section-title">Menos carga manual, más contexto útil</h2>
+          <p class="section-subtitle">
+            La idea no es solo anotar. Es tener un asistente que te responda rápido y con tus datos.
+          </p>
         </div>
 
-        <div class="groups-demo">
-          <div class="group-chat-demo">
-            <div class="gc-header">
-              <div class="gc-icon">🏠</div>
-              <div>
-                <div class="gc-name">Departamento Palermo</div>
-                <div class="gc-members">Ramiro, Sofi, Lucas · 3 miembros</div>
-              </div>
-            </div>
-            <div class="gc-body">
-              <div class="gc-msg">
-                <div class="gc-sender">Ramiro</div>
-                <div class="chat-bubble user">expensas mayo 12000</div>
-              </div>
-              <div class="chat-bubble bot">✅ Ramiro puso <strong>$12.000</strong> en Expensas</div>
-              <div class="gc-msg">
-                <div class="gc-sender">Sofi</div>
-                <div class="chat-bubble user gc-sofi">internet 4800</div>
-              </div>
-              <div class="chat-bubble bot">✅ Sofi puso <strong>$4.800</strong> en Internet</div>
-              <div class="gc-msg">
-                <div class="gc-sender">Lucas</div>
-                <div class="chat-bubble user gc-lucas">super 8500</div>
-              </div>
-              <div class="chat-bubble bot">✅ Lucas puso <strong>$8.500</strong> en Super</div>
-              <div class="chat-bubble user">balance del grupo</div>
-              <div class="chat-bubble bot">
-                📊 <strong>Balance mayo:</strong><br>
-                Total: $25.300 → cada uno: <strong>$8.433</strong><br><br>
-                💸 Sofi le debe a Ramiro <strong>$3.567</strong><br>
-                💸 Lucas le debe a Ramiro <strong>$67</strong><br><br>
-                ¿Liquido el grupo?
-              </div>
-            </div>
+        <div class="proof-grid">
+          <article class="proof-card animate-on-scroll">
+            <div class="proof-icon">⚡</div>
+            <h3>Captura sin fricción</h3>
+            <p>Escribís como hablás. También podés mandar audio o foto de ticket cuando no querés tipear.</p>
+          </article>
+
+          <article class="proof-card animate-on-scroll">
+            <div class="proof-icon">📊</div>
+            <h3>Resumen inmediato</h3>
+            <p>Pedís “cuánto gasté” y responde con total, categorías, comparativas y compromisos mensuales.</p>
+          </article>
+
+          <article class="proof-card animate-on-scroll">
+            <div class="proof-icon">🧠</div>
+            <h3>Ayuda real</h3>
+            <p>Alertas de desvíos, proyecciones de ahorro, cuotas y educación financiera sobre tu propio historial.</p>
+          </article>
+        </div>
+
+        <div class="feature-band animate-on-scroll">
+          <div>
+            <h3>Funciona donde ya estás</h3>
+            <p>Privado o en grupo. Viajes, roommates, salidas o gastos del mes en un solo flujo.</p>
           </div>
+          <ul class="feature-list">
+            <li>Gastos personales y grupales</li>
+            <li>Audios, tickets y lenguaje natural</li>
+            <li>Cuotas, alertas e insights</li>
+          </ul>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- How it works -->
-  <section id="how-it-works" class="how-it-works">
-    <div class="container">
-      <span class="section-badge">Cómo funciona</span>
-      <h2 class="section-title">3 pasos y listo</h2>
-
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <h3>Unite a la waitlist</h3>
-          <p>Dejá tu número de WhatsApp y te avisamos cuando haya lugar.</p>
-        </div>
-        <div class="step-arrow">→</div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <h3>Te damos acceso</h3>
-          <p>Agregamos tu número a la whitelist y te mandamos un mensaje de bienvenida.</p>
-        </div>
-        <div class="step-arrow">→</div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <h3>Escribile al bot</h3>
-          <p>Mandá tus gastos como mensajes normales. Anotamelo hace el resto.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Demo / Chat preview -->
-  <section id="demo" class="demo">
-    <div class="container">
-      <span class="section-badge">Demo</span>
-      <h2 class="section-title">Mirá cómo se ve en acción</h2>
-
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-label">Registro rápido</div>
-          <div class="demo-chat">
-            <div class="chat-bubble user">3200 almuerzo con los pibes</div>
-            <div class="chat-bubble bot">✅ Registré <strong>$3.200</strong> en almuerzo con los pibes (Comida) 🍔</div>
-          </div>
+    <section id="demo" class="demo section-anchor">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-badge">Demo</span>
+          <h2 class="section-title">Así se siente usarlo</h2>
+          <p class="section-subtitle">Tres mensajes típicos y listo. Esa es la idea.</p>
         </div>
 
-        <div class="demo-card">
-          <div class="demo-label">Cálculos automáticos</div>
-          <div class="demo-chat">
-            <div class="chat-bubble user">15000 dividido 4 personas, cena</div>
-            <div class="chat-bubble bot">✅ Registré <strong>$3.750</strong> en cena (Comida) 🍔<br><em>Cálculo: 15000 / 4 = 3750</em></div>
-          </div>
-        </div>
-
-        <div class="demo-card">
-          <div class="demo-label">Multi-moneda</div>
-          <div class="demo-chat">
-            <div class="chat-bubble user">25 usd spotify</div>
-            <div class="chat-bubble bot">✅ Registré <strong>$30.000</strong> en spotify (Entretenimiento) 🎮<br><em>Original: 25 USD (tasa: 1200)</em></div>
-          </div>
-        </div>
-
-        <div class="demo-card">
-          <div class="demo-label">Búsqueda</div>
-          <div class="demo-chat">
-            <div class="chat-bubble user">buscar gastos de uber</div>
-            <div class="chat-bubble bot">Encontré 3 gastos de uber:<br>• 12/03 - $850 🚗<br>• 08/03 - $1.200 🚗<br>• 02/03 - $650 🚗<br>Total: <strong>$2.700</strong></div>
-          </div>
-        </div>
-
-        <div class="demo-card">
-          <div class="demo-label">Mensaje de audio 🎙️</div>
-          <div class="demo-chat">
-            <div class="chat-bubble user audio-bubble">
-              <div class="audio-wave">
-                <span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
-              <span class="audio-time">0:05</span>
+        <div class="demo-grid">
+          <article class="demo-card animate-on-scroll">
+            <div class="demo-label">Registro rápido</div>
+            <div class="demo-chat">
+              <div class="chat-bubble user">3200 almuerzo con los pibes</div>
+              <div class="chat-bubble bot">✅ Registré <strong>$3.200</strong> en almuerzo (Comida) 🍔</div>
             </div>
-            <div class="chat-bubble bot">🎙️ Escuché: <em>"tres mil doscientos en el super de la esquina"</em><br><br>✅ Registré <strong>$3.200</strong> en Super (Supermercado) 🛒</div>
-          </div>
-        </div>
+          </article>
 
-        <div class="demo-card">
-          <div class="demo-label">Foto de ticket 📸</div>
-          <div class="demo-chat">
-            <div class="chat-bubble user photo-bubble">
-              <div class="photo-preview">
-                <div class="photo-receipt">
-                  <div class="receipt-line">FARMACITY</div>
-                  <div class="receipt-line sm">Medicamentos</div>
-                  <div class="receipt-line sm">──────────────</div>
-                  <div class="receipt-line"><strong>TOTAL: $4.750</strong></div>
-                </div>
-              </div>
+          <article class="demo-card animate-on-scroll">
+            <div class="demo-label">Análisis</div>
+            <div class="demo-chat">
+              <div class="chat-bubble user">¿en qué se me va más plata?</div>
+              <div class="chat-bubble bot">Gastaste 28% más en delivery que el mes pasado. Ahí está el mayor desvío.</div>
             </div>
-            <div class="chat-bubble bot">📸 Extraje del ticket:<br><strong>$4.750</strong> en Farmacity (Salud) 💊<br><br>✅ Registrado automáticamente.</div>
-          </div>
+          </article>
+
+          <article class="demo-card animate-on-scroll">
+            <div class="demo-label">Grupo</div>
+            <div class="demo-chat">
+              <div class="chat-bubble user">@anotamelo expensas 12000</div>
+              <div class="chat-bubble bot">✅ Lo sumé al grupo. Si querés, te liquido quién le debe a quién.</div>
+            </div>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Waitlist -->
-  <section id="waitlist" class="waitlist">
-    <div class="container">
-      <div class="waitlist-card">
-        <h2>Unite a la waitlist</h2>
-        <p>Dejá tu email y te avisamos cuando tengas acceso.</p>
-
-        <form id="waitlist-form" class="waitlist-form">
-          <div class="input-group">
-            <span class="input-icon">✉️</span>
-            <input
-              type="email"
-              id="email-input"
-              placeholder="tu@email.com"
-              required
-              autocomplete="email"
-            >
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-full">
-            <span class="btn-text">Quiero acceso</span>
-            <span class="btn-loading" hidden>Guardando...</span>
-          </button>
-        </form>
-
-        <div id="waitlist-success" class="waitlist-success" hidden>
-          <div class="success-icon">🎉</div>
-          <h3>¡Estás en la lista!</h3>
-          <p>Te vamos a mandar un email cuando tengas acceso. Gracias por tu interés.</p>
+    <section class="closing-cta">
+      <div class="container closing-card animate-on-scroll">
+        <div>
+          <span class="section-badge">Beta abierta por cupos</span>
+          <h2>Si te interesa probarlo, anotate arriba.</h2>
+          <p>El acceso lo estamos abriendo por tandas para acompañar bien las primeras cuentas.</p>
         </div>
-
-        <div id="waitlist-error" class="waitlist-error" hidden></div>
-
-        <p class="waitlist-count">Te confirmamos por email cuando abras nuevos cupos.</p>
+        <a href="#waitlist" class="btn btn-primary btn-lg">Quiero entrar primero</a>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- Footer -->
   <footer class="footer">
     <div class="container footer-content">
       <div class="footer-brand">
         <img src="logo.png" alt="Anotamelo" class="logo-img">
         <span class="logo-text">Anotamelo</span>
       </div>
-      <p class="footer-copy">Hecho con ☕ en Argentina. Tu plata, organizada.</p>
+      <p class="footer-copy">Hecho en Argentina. Tu plata, más clara.</p>
     </div>
   </footer>
 

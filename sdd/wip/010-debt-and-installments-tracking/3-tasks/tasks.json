@@ -1,0 +1,88 @@
+{
+  "feature": "010-debt-and-installments-tracking",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Agregar modelo de obligaciones futuras",
+      "description": "Crear la entidad relacional para cuotas y deudas simples con su migracion.",
+      "files": [
+        "app/db/models.py",
+        "migrations/versions",
+        "tests/test_db_models.py"
+      ],
+      "acceptance_criteria": [
+        "Existe un modelo para obligaciones pendientes por usuario",
+        "La migracion crea el schema requerido",
+        "Los tests cubren la estructura basica"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001",
+        "#ADR-002"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Implementar servicio de cuotas y deudas",
+      "description": "Agregar la logica para alta, consulta mensual y cierre de obligaciones.",
+      "files": [
+        "app/services/liabilities.py",
+        "tests/test_liabilities.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio registra cuotas y deudas simples",
+        "El compromiso mensual refleja solo obligaciones activas",
+        "Los tests cubren cierre y datos incompletos"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Exponer obligaciones en el agente",
+      "description": "Agregar tools y respuestas conversacionales para registrar y consultar compromisos futuros.",
+      "files": [
+        "app/agent/tools.py",
+        "tests/test_tools.py",
+        "tests/integration/test_agent_loop.py"
+      ],
+      "acceptance_criteria": [
+        "El usuario puede registrar cuotas y preguntar por su compromiso mensual",
+        "Las respuestas distinguen gasto realizado de obligacion futura",
+        "Los tests cubren usuario con y sin obligaciones"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "completed": 0,
+    "pending": 3,
+    "tdd_tasks": 3
+  }
+}

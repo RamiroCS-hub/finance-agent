@@ -1,0 +1,87 @@
+{
+  "feature": "011-financial-education-coach",
+  "generated_at": "2026-03-21",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Implementar reglas educativas base",
+      "description": "Agregar calculos deterministas para 50/30/20 y fondo de emergencia sobre historico real.",
+      "files": [
+        "app/services/education.py",
+        "tests/test_education.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio calcula distribucion 50/30/20 con datos del usuario",
+        "El servicio estima rango de fondo de emergencia",
+        "Los tests cubren historico suficiente e insuficiente"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Agregar comparativa opcional con inflacion",
+      "description": "Integrar una fuente configurable de inflacion con fallback a comparativa nominal.",
+      "files": [
+        "app/services/education.py",
+        "app/config.py",
+        "tests/test_education.py"
+      ],
+      "acceptance_criteria": [
+        "La comparativa usa inflacion cuando hay fuente configurada",
+        "El servicio degrada a modo nominal si la fuente falta o falla",
+        "Los tests cubren ambos caminos"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Generar tips personalizados desde el agente",
+      "description": "Exponer las reglas educativas y tips accionables mediante tools conversacionales.",
+      "files": [
+        "app/agent/tools.py",
+        "tests/test_tools.py",
+        "tests/integration/test_agent_loop.py",
+        "tests/test_education.py"
+      ],
+      "acceptance_criteria": [
+        "El usuario puede pedir una lectura educativa desde WhatsApp",
+        "Los tips estan anclados en patrones reales y no son genericos",
+        "Las respuestas mantienen fallback honesto cuando faltan datos"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "completed": 0,
+    "pending": 3,
+    "tdd_tasks": 3
+  }
+}

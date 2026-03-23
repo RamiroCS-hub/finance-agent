@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.db.database import async_session_maker
 from app.db.models import Expense, Goal, User
 from app.services.timezones import DB_ZONE, local_now_for_phone
+from app.services.user_service import get_user_by_identity
 
 
 class SavingsProjectionService:
@@ -159,8 +160,7 @@ class SavingsProjectionService:
         return round(total / periods, 2)
 
     async def _get_user(self, session, phone: str) -> User | None:
-        result = await session.execute(select(User).where(User.whatsapp_number == phone))
-        return result.scalar_one_or_none()
+        return await get_user_by_identity(session, phone)
 
     async def _get_active_goal(self, session, user_id: int) -> Goal | None:
         result = await session.execute(

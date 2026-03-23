@@ -18,12 +18,49 @@ def normalize_database_url(url: str) -> str:
     return url
 
 
+def env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str, default: str) -> List[str]:
+    raw = os.getenv(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 class Settings:
     # WhatsApp Meta Cloud API
     WHATSAPP_TOKEN: str = os.getenv("WHATSAPP_TOKEN", "")
     WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
     WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
     WHATSAPP_APP_SECRET: str = os.getenv("WHATSAPP_APP_SECRET", "")
+    WHATSAPP_REQUIRE_SIGNATURE: bool = env_bool("WHATSAPP_REQUIRE_SIGNATURE", True)
+    WHATSAPP_ALLOW_UNSIGNED_DEV_WEBHOOKS: bool = env_bool(
+        "WHATSAPP_ALLOW_UNSIGNED_DEV_WEBHOOKS", False
+    )
+    WHATSAPP_MAX_AUDIO_BYTES: int = int(
+        os.getenv("WHATSAPP_MAX_AUDIO_BYTES", str(16 * 1024 * 1024))
+    )
+    WHATSAPP_MAX_IMAGE_BYTES: int = int(
+        os.getenv("WHATSAPP_MAX_IMAGE_BYTES", str(10 * 1024 * 1024))
+    )
+    WHATSAPP_ALLOWED_AUDIO_MIME_TYPES: List[str] = env_list(
+        "WHATSAPP_ALLOWED_AUDIO_MIME_TYPES",
+        "audio/ogg,audio/opus,audio/mpeg,audio/mp4,audio/aac,audio/amr",
+    )
+    WHATSAPP_ALLOWED_IMAGE_MIME_TYPES: List[str] = env_list(
+        "WHATSAPP_ALLOWED_IMAGE_MIME_TYPES",
+        "image/jpeg,image/png,image/webp",
+    )
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    TELEGRAM_API_BASE_URL: str = os.getenv("TELEGRAM_API_BASE_URL", "https://api.telegram.org")
+    ALLOWED_TELEGRAM_CHAT_IDS: List[str] = env_list("ALLOWED_TELEGRAM_CHAT_IDS", "")
+    TELEGRAM_UPDATE_DEDUP_TTL_SECONDS: int = int(
+        os.getenv("TELEGRAM_UPDATE_DEDUP_TTL_SECONDS", "300")
+    )
 
     # Google Sheets
     GOOGLE_SHEETS_CREDENTIALS_PATH: str = os.getenv(
@@ -66,15 +103,10 @@ class Settings:
 
     # App
     DEFAULT_CURRENCY: str = os.getenv("DEFAULT_CURRENCY", "ARS")
+    DEFAULT_USER_TIMEZONE: str = os.getenv("DEFAULT_USER_TIMEZONE", DATABASE_TIMEZONE)
     GROUP_BOT_MENTION: str = os.getenv("GROUP_BOT_MENTION", "@anotamelo")
-    ALLOWED_PHONE_NUMBERS: List[str] = [
-        n.strip()
-        for n in os.getenv("ALLOWED_PHONE_NUMBERS", "").split(",")
-        if n.strip()
-    ]
-    WHATSAPP_RATE_LIMIT_ENABLED: bool = os.getenv(
-        "WHATSAPP_RATE_LIMIT_ENABLED", "true"
-    ).lower() in {"1", "true", "yes", "on"}
+    ALLOWED_PHONE_NUMBERS: List[str] = env_list("ALLOWED_PHONE_NUMBERS", "")
+    WHATSAPP_RATE_LIMIT_ENABLED: bool = env_bool("WHATSAPP_RATE_LIMIT_ENABLED", True)
     WHATSAPP_RATE_LIMIT_MAX_MESSAGES: int = int(
         os.getenv("WHATSAPP_RATE_LIMIT_MAX_MESSAGES", "8")
     )

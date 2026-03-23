@@ -5,10 +5,16 @@ from redis import asyncio as redis_asyncio
 
 from app.agent.core import AgentLoop
 from app.agent.memory import ConversationMemory
+from app.api.telegram_webhook import (
+    init_dependencies as init_telegram_dependencies,
+    router as telegram_webhook_router,
+)
 from app.api.webhook import init_dependencies, router as webhook_router
 from app.config import settings
+from app.services.channel_identity import ChannelIdentityService
 from app.services.expenses import ExpenseService
 from app.services.llm_provider import get_provider
+from app.services.message_dispatch import MessageDispatcher
 from app.services.rate_limit import RateLimitService
 
 # Logging
@@ -35,6 +41,8 @@ async def startup():
         memory=memory,
         max_iterations=settings.MAX_AGENT_ITERATIONS,
     )
+    dispatcher = MessageDispatcher()
+    identity_service = ChannelIdentityService()
 
     rate_limiter = None
     if settings.WHATSAPP_RATE_LIMIT_ENABLED:
@@ -52,6 +60,11 @@ async def startup():
         )
 
     init_dependencies(agent, rate_limiter=rate_limiter)
+    init_telegram_dependencies(
+        agent,
+        dispatcher=dispatcher,
+        identity_service=identity_service,
+    )
     logger.info(
         "Bot listo. Provider: %s | TTL: %dmin | Max iter: %d | Rate limit: %s",
         settings.LLM_PROVIDER,
@@ -70,3 +83,4 @@ async def shutdown():
 
 
 app.include_router(webhook_router)
+app.include_router(telegram_webhook_router)

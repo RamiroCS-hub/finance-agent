@@ -13,6 +13,7 @@ from app.agent.memory import ConversationMemory
 from app.agent.tools import ToolRegistry
 from app.models.agent import Message
 from app.services.expenses import ExpenseService
+from app.services.channel_identity import ResolvedUserContext
 from app.services.group_expenses import GroupExpenseService
 from app.services.llm_provider import LLMProvider
 from app.services.timezones import infer_timezone_for_phone, local_now_for_phone
@@ -150,7 +151,7 @@ class AgentLoop:
 
     async def process(
         self,
-        phone: str,
+        phone: str | ResolvedUserContext,
         user_text: str,
         replied_to_id: str | None = None,
         chat_type: str = "private",
@@ -162,28 +163,30 @@ class AgentLoop:
         y lo antepone al mensaje del usuario para que el LLM tenga contexto del reply.
         Actualiza el historial de conversación en memoria.
         """
-        conversation_key = self._conversation_key(phone, chat_type, group_id)
+        user_ctx = phone if isinstance(phone, ResolvedUserContext) else None
+        identity_key = user_ctx.identity_key if user_ctx is not None else phone
+        conversation_key = self._conversation_key(identity_key, chat_type, group_id)
 
         # Registrar usuario si es nuevo (operación rápida con caché de gspread)
         if self.expense_store is not None:
             ensure_user_result = None
             try:
-                ensure_user_result = self.expense_store.ensure_user(phone)
+                ensure_user_result = self.expense_store.ensure_user(identity_key)
                 if inspect.isawaitable(ensure_user_result):
                     await ensure_user_result
             except Exception as e:
                 if inspect.iscoroutine(ensure_user_result):
                     ensure_user_result.close()
-                logger.warning("Error en ensure_user para %s: %s", phone, e)
+                logger.warning("Error en ensure_user para %s: %s", identity_key, e)
 
         # Si el usuario respondió a un mensaje específico del bot, inyectar contexto
         if replied_to_id:
-            referenced = self.memory.get_by_wamid(conversation_key, replied_to_id)
+            referenced = self.memory.get_by_message_ref(conversation_key, replied_to_id)
             if referenced:
                 # Truncar el mensaje referenciado para no inflar el contexto
                 preview = referenced[:200] + "..." if len(referenced) > 200 else referenced
                 user_text = f'[En respuesta a: "{preview}"]\n{user_text}'
-                logger.debug("Reply detectado para %s → referencia: %s", phone, replied_to_id)
+                logger.debug("Reply detectado para %s → referencia: %s", identity_key, replied_to_id)
             else:
                 # wamid no disponible (reinicio de servidor o sesión cruzada):
                 # informar al modelo para que pueda pedir aclaración si el mensaje es ambiguo
@@ -194,7 +197,7 @@ class AgentLoop:
                     + user_text
                 )
                 logger.debug(
-                    "Reply con wamid %s no encontrado en memoria para %s", replied_to_id, phone
+                    "Reply con id %s no encontrado en memoria para %s", replied_to_id, identity_key
                 )
 
         # Obtener personalidad
@@ -203,7 +206,7 @@ class AgentLoop:
             async with async_session_maker() as session:
                 custom_prompt = await get_custom_prompt(
                     session,
-                    group_id if chat_type == "group" and group_id else phone,
+                    group_id if chat_type == "group" and group_id else identity_key,
                     is_group=chat_type == "group" and group_id is not None,
                 )
         except Exception as e:
@@ -212,24 +215,24 @@ class AgentLoop:
         messages = self.memory.get(conversation_key) + [Message(role="user", content=user_text)]
         tools = ToolRegistry(
             self.expense_store,
-            phone,
+            identity_key,
             chat_type=chat_type,
             group_id=group_id,
         )
-        system_prompt = self._build_system_prompt(phone, chat_type, group_id)
+        system_prompt = self._build_system_prompt(identity_key, chat_type, group_id)
         if custom_prompt:
             system_prompt = f"{custom_prompt}\n\n{system_prompt}"
 
         canonical_tool_reply: str | None = None
         for iteration in range(self.max_iterations):
-            logger.debug("Iteración %d del agente para %s", iteration + 1, phone)
+            logger.debug("Iteración %d del agente para %s", iteration + 1, identity_key)
 
             try:
                 response = await self.llm.chat_with_tools(
                     messages, tools.definitions(), system_prompt
                 )
             except Exception as exc:
-                logger.error("Error en LLM (iteración %d) para %s: %s", iteration + 1, phone, exc)
+                logger.error("Error en LLM (iteración %d) para %s: %s", iteration + 1, identity_key, exc)
                 return "Estoy con problemas para conectarme en este momento. Intentá de nuevo en unos segundos 🙏"
 
             if response.finish_reason == "stop":

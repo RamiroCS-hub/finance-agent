@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.database import async_session_maker
 from app.db.models import BudgetRule, User
-from app.services.user_service import get_or_create_user
+from app.services.user_service import get_or_create_user, get_user_by_identity
 
 
 class BudgetService:
@@ -95,5 +95,4 @@ class BudgetService:
             return result.scalar_one_or_none()
 
     async def _get_user(self, session, phone: str) -> User | None:
-        result = await session.execute(select(User).where(User.whatsapp_number == phone))
-        return result.scalar_one_or_none()
+        return await get_user_by_identity(session, phone)

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.db.database import async_session_maker
 from app.db.models import Expense, User
 from app.services.timezones import DB_ZONE, local_now_for_phone
+from app.services.user_service import get_user_by_identity
 
 logger = logging.getLogger(__name__)
 
@@ -216,8 +217,7 @@ class SpendingInsightsService:
         return list(result.scalars().all())
 
     async def _get_user(self, session, phone: str) -> User | None:
-        result = await session.execute(select(User).where(User.whatsapp_number == phone))
-        return result.scalar_one_or_none()
+        return await get_user_by_identity(session, phone)
 
     def _aggregate_expenses(
         self,

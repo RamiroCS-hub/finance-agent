@@ -1,0 +1,163 @@
+{
+  "feature": "017-telegram-channel-connection",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Crear identidad multi-canal y migracion",
+      "description": "Agregar el modelo `UserChannel`, volver `users.whatsapp_number` compatible con usuarios Telegram-only y crear la migracion Alembic con backfill para identidades WhatsApp existentes.",
+      "files": [
+        "app/db/models.py",
+        "app/services/channel_identity.py",
+        "migrations/versions/<revision>_add_user_channels.py",
+        "tests/test_channel_identity.py",
+        "tests/test_db_models.py"
+      ],
+      "acceptance_criteria": [
+        "Existe una identidad unica por `(channel, external_user_id)`.",
+        "La migracion permite usuarios sin `whatsapp_number` y preserva compatibilidad con usuarios existentes.",
+        "Los tests cubren alta, deduplicacion y backfill de identidades."
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#REQ-04",
+        "#ADR-002"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Generalizar memoria y contexto del agente",
+      "description": "Refactorizar `ConversationMemory`, `AgentLoop` y `ToolRegistry` para operar con conversation keys y referencias de mensajes channel-aware, dejando de depender de `wamid` y de un telefono obligatorio.",
+      "files": [
+        "app/agent/memory.py",
+        "app/agent/core.py",
+        "app/agent/tools.py",
+        "app/agent/skills.py",
+        "tests/test_agent.py",
+        "tests/test_tools.py"
+      ],
+      "acceptance_criteria": [
+        "La memoria y los replies quedan aislados por canal.",
+        "El agente acepta un contexto canonico de usuario sin requerir `whatsapp_number` en todos los paths.",
+        "La cobertura existente del agente sigue pasando con el nuevo contrato."
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-03",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Migrar servicios a identidad canonica",
+      "description": "Actualizar servicios de dominio y utilidades que hoy consultan por `User.whatsapp_number` para trabajar por `user_id` o `ResolvedUserContext`, incluyendo defaults de timezone y paths compatibles con WhatsApp.",
+      "files": [
+        "app/services/user_service.py",
+        "app/services/expenses.py",
+        "app/services/budgets.py",
+        "app/services/alerts.py",
+        "app/services/insights.py",
+        "app/services/liabilities.py",
+        "app/services/projections.py",
+        "app/services/personality.py",
+        "app/services/timezones.py",
+        "tests/test_personality.py",
+        "tests/test_group_expenses.py"
+      ],
+      "acceptance_criteria": [
+        "Los servicios privados principales pueden operar con un usuario Telegram-only.",
+        "Las reglas dependientes de telefono usan fallback explicito cuando no hay numero.",
+        "Los flujos actuales de WhatsApp siguen resolviendo al mismo usuario interno."
+      ],
+      "spec_refs": [
+        "#REQ-04",
+        "#REQ-05",
+        "#ADR-002",
+        "#ADR-004"
+      ],
+      "depends_on": [
+        "1",
+        "2"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Implementar webhook y cliente de Telegram",
+      "description": "Agregar configuracion, servicio saliente, dispatcher multi-canal y endpoint `/telegram/webhook` con validacion de secret, filtro de chats privados de texto y wiring en `main.py`.",
+      "files": [
+        "app/config.py",
+        "app/main.py",
+        "app/api/telegram_webhook.py",
+        "app/services/telegram.py",
+        "app/services/message_dispatch.py",
+        "tests/test_telegram.py",
+        "tests/test_telegram_webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "Un update privado valido de Telegram dispara el agente y responde por Telegram.",
+        "Updates no soportados o con secret invalido se manejan segun la spec sin tocar WhatsApp.",
+        "El dispatcher envia cada respuesta por el canal correcto."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-05",
+        "#ADR-001",
+        "#ADR-003",
+        "#ADR-004"
+      ],
+      "depends_on": [
+        "2",
+        "3"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "5",
+      "title": "Documentar setup y validar regresion",
+      "description": "Actualizar la documentacion operativa para Telegram y ejecutar la suite relevante de pytest para garantizar que el canal nuevo convive con WhatsApp sin regresiones.",
+      "files": [
+        "docs/setup/local.md",
+        "README.md",
+        "tests/test_telegram_webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "La documentacion explica token, secret, webhook y limites de alcance de Telegram v1.",
+        "Existe verificacion focalizada de Telegram y regresion de WhatsApp.",
+        "El ultimo estado deja claro que la feature no incluye grupos ni media en Telegram."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-05"
+      ],
+      "depends_on": [
+        "4"
+      ],
+      "status": "done",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "completed": 5,
+    "pending": 0,
+    "tdd_tasks": 4
+  }
+}

@@ -17,7 +17,7 @@ class ConversationMemory:
 
     def __init__(self, ttl_minutes: int = 60) -> None:
         self._store: dict[str, tuple[list[Message], datetime]] = {}
-        self._wamid_index: dict[str, dict[str, str]] = {}  # phone → {wamid: texto}
+        self._message_ref_index: dict[str, dict[str, str]] = {}  # conversation_key → {message_id: texto}
         self._ttl = timedelta(minutes=ttl_minutes)
 
     def get(self, phone: str) -> list[Message]:
@@ -41,18 +41,25 @@ class ConversationMemory:
     def clear(self, phone: str) -> None:
         """Borra el historial manualmente (ej: usuario pide 'nueva conversación')."""
         self._store.pop(phone, None)
-        self._wamid_index.pop(phone, None)
+        self._message_ref_index.pop(phone, None)
         logger.debug("Historial de %s borrado manualmente", phone)
 
-    def store_wamid(self, phone: str, wamid: str, text: str) -> None:
-        """Guarda el texto de un mensaje enviado, indexado por su wamid."""
-        if phone not in self._wamid_index:
-            self._wamid_index[phone] = {}
-        self._wamid_index[phone][wamid] = text
+    def store_message_ref(self, conversation_key: str, message_id: str, text: str) -> None:
+        """Guarda el texto de un mensaje enviado, indexado por el id nativo del canal."""
+        if conversation_key not in self._message_ref_index:
+            self._message_ref_index[conversation_key] = {}
+        self._message_ref_index[conversation_key][message_id] = text
 
-    def get_by_wamid(self, phone: str, wamid: str) -> str | None:
+    def get_by_message_ref(self, conversation_key: str, message_id: str) -> str | None:
         """
-        Retorna el texto de un mensaje previamente enviado dado su wamid.
+        Retorna el texto de un mensaje previamente enviado dado su id nativo del canal.
         Retorna None si el ID no está en el índice (mensaje antiguo o fuera de sesión).
         """
-        return self._wamid_index.get(phone, {}).get(wamid)
+        return self._message_ref_index.get(conversation_key, {}).get(message_id)
+
+    # Compatibilidad con código/tests viejos de WhatsApp.
+    def store_wamid(self, phone: str, wamid: str, text: str) -> None:
+        self.store_message_ref(phone, wamid, text)
+
+    def get_by_wamid(self, phone: str, wamid: str) -> str | None:
+        return self.get_by_message_ref(phone, wamid)

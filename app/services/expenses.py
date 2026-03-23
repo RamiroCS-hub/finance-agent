@@ -17,7 +17,7 @@ from app.services.timezones import (
     utc_window_for_local_date_range,
     utc_window_for_local_month,
 )
-from app.services.user_service import get_or_create_user
+from app.services.user_service import get_or_create_user, get_user_by_identity
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,7 @@ class ExpenseService:
 
     async def ensure_user(self, phone: str) -> bool:
         async with self.session_maker() as session:
-            query = select(User.id).where(User.whatsapp_number == phone)
-            result = await session.execute(query)
-            existing = result.scalar_one_or_none()
+            existing = await get_user_by_identity(session, phone)
             if existing is not None:
                 return False
 
@@ -265,9 +263,7 @@ class ExpenseService:
             return list(result.scalars().all())
 
     async def _get_user(self, session, phone: str) -> User | None:
-        query = select(User).where(User.whatsapp_number == phone)
-        result = await session.execute(query)
-        return result.scalar_one_or_none()
+        return await get_user_by_identity(session, phone)
 
     def _serialize_expense(
         self,

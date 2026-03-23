@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -13,11 +13,17 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    whatsapp_number: Mapped[str] = mapped_column(String, unique=True, index=True)
+    whatsapp_number: Mapped[Optional[str]] = mapped_column(
+        String, unique=True, index=True, nullable=True
+    )
     plan: Mapped[str] = mapped_column(String, default="FREE")
+    default_timezone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     # Relationships
+    channels: Mapped[list["UserChannel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     group_memberships: Mapped[list["GroupMember"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -213,3 +219,20 @@ class ChatConfiguration(Base):
     # Relationships
     user: Mapped[Optional["User"]] = relationship(back_populates="chat_configurations")
     group: Mapped[Optional["Group"]] = relationship(back_populates="chat_configurations")
+
+
+class UserChannel(Base):
+    __tablename__ = "user_channels"
+    __table_args__ = (
+        UniqueConstraint("channel", "external_user_id", name="uq_user_channels_channel_external"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    channel: Mapped[str] = mapped_column(String, index=True)
+    external_user_id: Mapped[str] = mapped_column(String)
+    chat_id: Mapped[str] = mapped_column(String)
+    display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="channels")

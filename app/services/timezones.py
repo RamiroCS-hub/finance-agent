@@ -29,10 +29,12 @@ _PREFIX_TIMEZONES: list[tuple[str, str]] = [
 
 def infer_timezone_for_phone(phone: str | None) -> str:
     normalized = _normalize_phone(phone)
+    if not normalized:
+        return settings.DEFAULT_USER_TIMEZONE
     for prefix, timezone_name in _PREFIX_TIMEZONES:
         if normalized.startswith(prefix):
             return timezone_name
-    return settings.DATABASE_TIMEZONE
+    return settings.DEFAULT_USER_TIMEZONE
 
 
 def local_now_for_phone(phone: str | None) -> datetime:
@@ -107,4 +109,9 @@ def display_datetime_for_phone(
 def _normalize_phone(phone: str | None) -> str:
     if not phone:
         return ""
+    if ":" in phone:
+        channel, raw_value = phone.split(":", 1)
+        if channel and channel != "whatsapp":
+            return ""
+        phone = raw_value
     return "".join(ch for ch in phone if ch.isdigit())

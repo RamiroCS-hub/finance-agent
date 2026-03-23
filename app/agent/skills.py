@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from app.models.agent import ToolDefinition
 from app.models.expense import ParsedExpense
 from app.services.timezones import infer_timezone_for_phone, local_now_for_phone
+from app.services.user_service import get_user_by_identity
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ def safe_calc(expression: str) -> float:
 class ToolExecutionContext:
     expense_store: object | None
     phone: str
+    channel: str
     chat_type: str
     group_id: str | None
     group_expense_service: object
@@ -78,6 +80,10 @@ class ToolExecutionContext:
 class BaseSkill:
     def __init__(self, ctx: ToolExecutionContext) -> None:
         self.ctx = ctx
+
+    @property
+    def channel(self) -> str:
+        return self.ctx.channel or ("telegram" if self.ctx.phone.startswith("telegram:") else "whatsapp")
 
 
 class ExpenseSkill(BaseSkill):
@@ -749,13 +755,16 @@ class GroupSkill(BaseSkill):
 
         try:
             async with async_session_maker() as session:
-                query = select(User).where(User.whatsapp_number == self.ctx.phone).options(
-                    selectinload(User.group_memberships).selectinload(GroupMember.group)
+                user = await get_user_by_identity(session, self.ctx.phone)
+                if not user:
+                    return {"success": False, "error": "Usuario no encontrado"}
+                query = (
+                    select(User)
+                    .where(User.id == user.id)
+                    .options(selectinload(User.group_memberships).selectinload(GroupMember.group))
                 )
                 result = await session.execute(query)
                 user = result.scalar_one_or_none()
-                if not user:
-                    return {"success": False, "error": "Usuario no encontrado"}
 
                 groups_info = []
                 for membership in user.group_memberships:
@@ -934,6 +943,16 @@ class ReportSkill(BaseSkill):
         from app.config import settings
         from app.services import report_pdf, whatsapp
 
+        if self.channel != "whatsapp":
+            return {
+                "success": False,
+                "error": "telegram_text_only",
+                "formatted_confirmation": (
+                    "Por ahora en Telegram solo soportamos mensajes de texto. "
+                    "El reporte PDF sigue disponible por WhatsApp."
+                ),
+            }
+
         now = local_now_for_phone(self.ctx.phone)
         if month is None:
             if now.day < 15:
@@ -1073,6 +1092,12 @@ class UtilitySkill(BaseSkill):
         import httpx
         from app.services import whatsapp
 
+        if self.channel != "whatsapp":
+            return {
+                "success": False,
+                "error": "telegram_text_only",
+            }
+
         cat_api_url = "https://api.thecatapi.com/v1/images/search?mime_types=jpg,png"
         try:
             with httpx.Client() as client:
@@ -1091,14 +1116,30 @@ class UtilitySkill(BaseSkill):
 
     async def _save_personality(self, prompt: str) -> dict:
         from app.db.database import async_session_maker
-        from app.services.personality import save_custom_prompt
+        from app.services.personality import (
+            GroupPersistentConfigNotAllowed,
+            save_custom_prompt,
+        )
 
         try:
             async with async_session_maker() as session:
                 is_group = self.ctx.chat_type == "group" and self.ctx.group_id is not None
                 entity_id = self.ctx.group_id if is_group else self.ctx.phone
                 await save_custom_prompt(session, entity_id, prompt, is_group=is_group)
-                return {"success": True, "message": "Personalidad guardada exitosamente en la base de datos."}
+                return {
+                    "success": True,
+                    "message": "Personalidad guardada exitosamente en la base de datos.",
+                    "formatted_result": "Listo, guardé estas reglas persistentes para este chat privado.",
+                }
+        except GroupPersistentConfigNotAllowed as exc:
+            return {
+                "success": False,
+                "error": str(exc),
+                "formatted_result": (
+                    "Por ahora solo puedo guardar reglas persistentes en chats privados, "
+                    "no en grupos."
+                ),
+            }
         except Exception as exc:
             logger.error("Error guardando personalidad para %s: %s", self.ctx.phone, exc)
             return {"success": False, "error": str(exc)}

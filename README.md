@@ -1,8 +1,8 @@
 # Anotamelo
 
-Bot de gastos por WhatsApp sobre FastAPI. El producto actual combina:
+Bot de gastos conversacional sobre FastAPI. El producto actual combina:
 
-- WhatsApp Cloud API para ingreso y salida de mensajes
+- WhatsApp Cloud API como canal principal y Telegram Bot API como canal adicional `private text only`
 - LLM configurable para interpretación
 - PostgreSQL como storage operativo de gastos y metadata relacional
 - OCR de tickets por imagen con extracción de monto y comercio
@@ -51,11 +51,14 @@ python scripts/import_expenses_from_sheets.py --phone 5491123456789
 
 - Verificación: `GET /webhook`
 - Recepción: `POST /webhook`
+- Telegram: `POST /telegram/webhook`
 
 Para producción, además de `WHATSAPP_VERIFY_TOKEN`, configurá `WHATSAPP_APP_SECRET` para validar la firma `X-Hub-Signature-256` de Meta.
+Para Telegram configurá `TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`; la primera versión solo soporta chats privados de texto.
 
 ## Tiempo y zonas horarias
 
 - La base persiste timestamps en `UTC`.
 - La app infiere la zona horaria local del usuario a partir del prefijo internacional del número de WhatsApp.
-- Las fechas y horas que se muestran al usuario se renderizan en esa zona horaria inferida.
+- Si la identidad no trae teléfono, usa `DEFAULT_USER_TIMEZONE`.
+- Las fechas y horas que se muestran al usuario se renderizan en esa zona horaria resultante.

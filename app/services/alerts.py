@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.db.database import async_session_maker
 from app.db.models import BudgetRule, Expense, User
 from app.services.timezones import display_datetime_for_phone, utc_window_for_local_month
+from app.services.user_service import get_user_by_identity
 
 
 class AlertService:
@@ -89,5 +90,4 @@ class AlertService:
             return alerts
 
     async def _get_user(self, session, phone: str) -> User | None:
-        result = await session.execute(select(User).where(User.whatsapp_number == phone))
-        return result.scalar_one_or_none()
+        return await get_user_by_identity(session, phone)

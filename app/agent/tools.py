@@ -25,6 +25,14 @@ from app.services.timezones import local_now_for_phone  # compat for patched tes
 logger = logging.getLogger(__name__)
 
 
+def _infer_channel(phone: str, channel: str | None = None) -> str:
+    if channel:
+        return channel
+    if phone.startswith("telegram:"):
+        return "telegram"
+    return "whatsapp"
+
+
 class ToolRegistry:
     """
     Registro de herramientas compuesto por skills de dominio.
@@ -35,12 +43,14 @@ class ToolRegistry:
         self,
         expense_store: ExpenseService | None = None,
         phone: str = "",
+        channel: str | None = None,
         chat_type: str = "private",
         group_id: str | None = None,
         sheets: ExpenseService | None = None,
     ) -> None:
         self.expense_store = expense_store or sheets
         self.phone = phone
+        self.channel = _infer_channel(phone, channel)
         self.chat_type = chat_type
         self.group_id = group_id
 
@@ -56,6 +66,7 @@ class ToolRegistry:
         self.context = ToolExecutionContext(
             expense_store=self.expense_store,
             phone=self.phone,
+            channel=self.channel,
             chat_type=self.chat_type,
             group_id=self.group_id,
             group_expense_service=self.group_expense_service,

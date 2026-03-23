@@ -205,20 +205,20 @@
     </div>
 
     <div class="auth-card">
-      <p>Esta versión de la waitlist envía cada inscripción directo a <strong>ramirocarnicersouble8@gmail.com</strong> usando FormSubmit.</p>
-      <p>No hay panel de administración acá. Si más adelante querés guardar leads en Sheets o en una base real, ahí sí conviene volver a una integración con backend.</p>
+      <p>Esta versión de la landing ya no usa email ni FormSubmit. Los CTA redirigen directo a <strong>@AnotameloBot</strong> en Telegram.</p>
+      <p>No hay panel de administración acá porque el flujo actual no guarda leads. Si más adelante querés medir conversiones o capturar contactos, ahí sí conviene sumar una integración con backend.</p>
       <div class="actions">
-        <button class="btn btn-export" onclick="openInbox()">Abrir Gmail</button>
+        <button class="btn btn-export" onclick="openTelegram()">Abrir Telegram</button>
       </div>
       <div id="table-container" class="empty-state">
-        <p>La primera inscripción va a disparar un email de confirmación de FormSubmit. Tenés que aprobarlo para empezar a recibir los siguientes leads.</p>
+        <p>El acceso arranca directo en https://t.me/AnotameloBot, sin pasos intermedios.</p>
       </div>
     </div>
   </div>
 
   <script>
-    function openInbox() {
-      window.open('https://mail.google.com/', '_blank');
+    function openTelegram() {
+      window.open('https://t.me/AnotameloBot', '_blank');
     }
   </script>
 </body>

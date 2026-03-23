@@ -1,6 +1,6 @@
 # Frontend Claude
 
-Landing estatica para Tesorero con waitlist enviada por email usando FormSubmit, sin backend propio.
+Landing estatica para Tesorero con CTA directa al bot de Telegram `@AnotameloBot`, sin backend propio.
 
 ## Deploy en Vercel
 
@@ -12,10 +12,7 @@ Configura el proyecto con:
 
 ## Como funciona
 
-El formulario hace un `POST` a `https://formsubmit.co/ajax/ramirocarnicersouble8@gmail.com`.
-Cuando alguien se anota, FormSubmit reenvia la inscripcion por email.
-
-La primera vez que se use el formulario, FormSubmit manda un correo de activacion al destinatario. Hay que confirmarlo una sola vez para habilitar el flujo.
+Los CTA principales abren `https://t.me/AnotameloBot` en una nueva pestaña para iniciar la conversacion desde Telegram.
 
 ## Uso
 

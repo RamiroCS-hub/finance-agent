@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: anotamelo-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    preDeployCommand: python -m alembic upgrade head
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: anotamelo-db
+          property: connectionString
+      - key: DATABASE_USE_SSL
+        value: "false"
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "10"
+      - key: DATABASE_POOL_RECYCLE_SECONDS
+        value: "1800"
+      - key: DATABASE_TIMEZONE
+        value: "UTC"
+      - key: DEFAULT_USER_TIMEZONE
+        value: "UTC"
+      - key: WHATSAPP_RATE_LIMIT_ENABLED
+        value: "true"
+      - key: WHATSAPP_RATE_LIMIT_MAX_MESSAGES
+        value: "8"
+      - key: WHATSAPP_RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: WHATSAPP_RATE_LIMIT_NOTIFY_COOLDOWN_SECONDS
+        value: "120"
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+databases:
+  - name: anotamelo-db
+    plan: basic-256mb
+    databaseName: finance_bot
+    postgresMajorVersion: "16"

@@ -1,0 +1,114 @@
+{
+  "feature": "020-local-cache-rate-limit",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Refactorizar el rate limiter a cache local",
+      "description": "Reemplazar el backend Redis de `app/services/rate_limit.py` por estructuras locales en memoria con ventana fija, cleanup de expirados y cooldown de notificación.",
+      "files": [
+        "app/services/rate_limit.py",
+        "tests/test_rate_limit.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio devuelve allow/block por teléfono sin depender de Redis",
+        "Existe cobertura para ventana, cleanup, cupo exacto y cooldown de notificación",
+        "El estado vencido deja de afectar decisiones nuevas"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#ADR-001",
+        "#ADR-003"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Simplificar el wiring de startup",
+      "description": "Eliminar la inicialización de Redis para rate limiting en `app/main.py` y mantener la inyección del servicio local en el webhook sin romper el resto del arranque.",
+      "files": [
+        "app/main.py",
+        "app/api/webhook.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "El webhook puede consultar el rate limiter sin construirlo por request",
+        "La app arranca sin `REDIS_URL` cuando solo se usa rate limiting local",
+        "El wiring actual del agente sigue funcionando"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Actualizar documentación y contrato operativo",
+      "description": "Ajustar la documentación y los ejemplos de entorno para dejar claro que el rate limit ya no requiere Redis y que el enforcement es por instancia.",
+      "files": [
+        "docs/setup/local.md",
+        "README.md",
+        ".env.example"
+      ],
+      "acceptance_criteria": [
+        "La documentación ya no presenta Redis como requisito para el rate limiting",
+        "Queda explícito que el comportamiento es local por proceso",
+        "Los ejemplos de entorno no inducen a configurar Redis para este caso"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-001"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "4",
+      "title": "Validar regresión del webhook completo",
+      "description": "Ejecutar la suite relevante de pytest para confirmar que mensajes soportados, grupos, firma y throttling coexisten con el nuevo backend local.",
+      "files": [
+        "tests/test_webhook.py",
+        "tests/test_rate_limit.py",
+        "sdd/wip/020-local-cache-rate-limit/4-implementation/progress.md"
+      ],
+      "acceptance_criteria": [
+        "Pytest cubre casos permitidos, excedidos y arranque sin Redis",
+        "Los tests previos del webhook siguen pasando o quedan ajustados justificadamente",
+        "Se confirma que el contrato de respuesta del webhook sigue siendo {\"status\":\"ok\"} para eventos válidos"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03"
+      ],
+      "depends_on": [
+        "3"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "completed": 0,
+    "pending": 4,
+    "tdd_tasks": 2
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "feature": "019-render-managed-db-readiness",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Modelar settings de Render y Postgres administrado",
+      "description": "Actualizar la capa de configuración para distinguir local y producción por variables de entorno, incluyendo normalización de DATABASE_URL y flags explícitos para SSL/pooling y rate limiting.",
+      "files": [
+        "app/config.py",
+        ".env.example",
+        "tests/test_config.py"
+      ],
+      "acceptance_criteria": [
+        "La configuración acepta una DATABASE_URL inyectada por Render sin cambios manuales fuera del código",
+        "Los defaults siguen funcionando con Postgres y Redis locales del entorno Docker",
+        "Existen tests unitarios que cubren las variables nuevas y los caminos local/Render sin exigir Redis para el rate limiting"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-04",
+        "#ADR-003",
+        "#ADR-004"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Ajustar el bootstrap async de la base",
+      "description": "Endurecer `app/db/database.py` para inicializar el engine de SQLAlchemy con opciones compatibles con managed Postgres y añadir smoke tests de conexión o construcción del engine.",
+      "files": [
+        "app/db/database.py",
+        "tests/test_db_connection.py"
+      ],
+      "acceptance_criteria": [
+        "El engine puede construirse con configuración compatible con Render Postgres",
+        "Los tests cubren opciones relevantes de SSL/pooling o sus defaults",
+        "No se rompe el comportamiento existente del entorno local"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Preparar runtime y blueprint de Render",
+      "description": "Agregar el artefacto declarativo `render.yaml` y ajustar el arranque productivo del backend para que Render pueda desplegar la app sin `--reload` y con la base de datos enlazada como servicio separado, sin depender de Redis en el contrato base.",
+      "files": [
+        "render.yaml",
+        "Dockerfile"
+      ],
+      "acceptance_criteria": [
+        "El blueprint define un web service y una base administrada separados",
+        "La imagen o start command de producción usa el puerto del runtime y no usa `--reload`",
+        "El deploy no intenta arrancar PostgreSQL dentro del contenedor de la app ni requiere Redis para el primer release"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#ADR-001",
+        "#ADR-002"
+      ],
+      "depends_on": [
+        "1",
+        "2"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "4",
+      "title": "Documentar local vs Render y el flujo de migraciones",
+      "description": "Actualizar el README y crear la guía de deploy en Render aclarando que Docker queda solo para local, cómo correr migraciones y que el rate limiting del primer release usa cache local por instancia.",
+      "files": [
+        "README.md",
+        "docs/deploy/render.md",
+        "docs/setup/local.md"
+      ],
+      "acceptance_criteria": [
+        "La guía distingue explícitamente infraestructura local con Docker de producción en Render",
+        "Existe un paso documentado para aplicar migraciones antes de abrir tráfico",
+        "La documentación indica que el rate limiting inicial usa cache local y explica sus trade-offs"
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-03",
+        "#REQ-04",
+        "#ADR-002",
+        "#ADR-003",
+        "#ADR-004"
+      ],
+      "depends_on": [
+        "1",
+        "2",
+        "3"
+      ],
+      "status": "pending",
+      "tdd": false
+    },
+    {
+      "id": "5",
+      "title": "Ejecutar smoke checks de readiness",
+      "description": "Correr la validación final del flujo de configuración, migración y arranque, y registrar evidencia en el artefacto de progreso de la feature.",
+      "files": [
+        "sdd/wip/019-render-managed-db-readiness/4-implementation/progress.md"
+      ],
+      "acceptance_criteria": [
+        "Existe evidencia de una validación reproducible del arranque con configuración de Render",
+        "El resultado deja claro si faltan migraciones, variables críticas o aclaraciones de rate limiting local",
+        "Otro operador puede repetir los smoke checks con la guía escrita"
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-04"
+      ],
+      "depends_on": [
+        "4"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "completed": 0,
+    "pending": 5,
+    "tdd_tasks": 2
+  }
+}

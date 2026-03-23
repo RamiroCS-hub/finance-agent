@@ -1,7 +1,6 @@
 import logging
 
 from fastapi import FastAPI
-from redis import asyncio as redis_asyncio
 
 from app.agent.core import AgentLoop
 from app.agent.memory import ConversationMemory
@@ -25,7 +24,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Bot de Gastos WhatsApp")
-app.state.redis = None
 
 
 @app.on_event("startup")
@@ -46,14 +44,7 @@ async def startup():
 
     rate_limiter = None
     if settings.WHATSAPP_RATE_LIMIT_ENABLED:
-        redis_client = redis_asyncio.from_url(
-            settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-        )
-        app.state.redis = redis_client
         rate_limiter = RateLimitService(
-            redis_client=redis_client,
             max_messages=settings.WHATSAPP_RATE_LIMIT_MAX_MESSAGES,
             window_seconds=settings.WHATSAPP_RATE_LIMIT_WINDOW_SECONDS,
             notify_cooldown_seconds=settings.WHATSAPP_RATE_LIMIT_NOTIFY_COOLDOWN_SECONDS,
@@ -72,14 +63,6 @@ async def startup():
         settings.MAX_AGENT_ITERATIONS,
         "on" if settings.WHATSAPP_RATE_LIMIT_ENABLED else "off",
     )
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    redis_client = getattr(app.state, "redis", None)
-    if redis_client is not None:
-        await redis_client.aclose()
-        app.state.redis = None
 
 
 app.include_router(webhook_router)

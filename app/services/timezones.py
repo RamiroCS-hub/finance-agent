@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app.config import settings
@@ -76,6 +76,36 @@ def utc_window_for_local_month(
     return start_local.astimezone(DB_ZONE), end_local.astimezone(DB_ZONE)
 
 
+def utc_window_for_local_week(
+    timezone_name: str,
+    reference: datetime | None = None,
+) -> tuple[datetime, datetime]:
+    zone = ZoneInfo(timezone_name)
+    local_value = _coerce_to_timezone(reference, zone)
+    start_local = datetime(
+        local_value.year,
+        local_value.month,
+        local_value.day,
+        tzinfo=zone,
+    ) - timedelta(days=local_value.weekday())
+    end_local = start_local + timedelta(days=7)
+    return start_local.astimezone(DB_ZONE), end_local.astimezone(DB_ZONE)
+
+
+def utc_window_for_local_month_by_timezone(
+    timezone_name: str,
+    reference: datetime | None = None,
+) -> tuple[datetime, datetime]:
+    zone = ZoneInfo(timezone_name)
+    local_value = _coerce_to_timezone(reference, zone)
+    start_local = datetime(local_value.year, local_value.month, 1, tzinfo=zone)
+    if local_value.month == 12:
+        end_local = datetime(local_value.year + 1, 1, 1, tzinfo=zone)
+    else:
+        end_local = datetime(local_value.year, local_value.month + 1, 1, tzinfo=zone)
+    return start_local.astimezone(DB_ZONE), end_local.astimezone(DB_ZONE)
+
+
 def utc_window_for_local_date_range(
     phone: str,
     date_from: str | None,
@@ -115,3 +145,11 @@ def _normalize_phone(phone: str | None) -> str:
             return ""
         phone = raw_value
     return "".join(ch for ch in phone if ch.isdigit())
+
+
+def _coerce_to_timezone(value: datetime | None, zone: ZoneInfo) -> datetime:
+    if value is None:
+        return datetime.now(zone)
+    if value.tzinfo is None:
+        return value.replace(tzinfo=zone)
+    return value.astimezone(zone)

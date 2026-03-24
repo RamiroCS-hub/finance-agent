@@ -15,6 +15,7 @@ class ResolvedUserContext:
     chat_id: str
     phone_number: str | None
     timezone: str
+    plan: str = "FREE"
 
     @property
     def identity_key(self) -> str:
@@ -45,4 +46,5 @@ class ChannelIdentityService:
                 chat_id=chat_id,
                 phone_number=user.whatsapp_number,
                 timezone=user.default_timezone or settings.DEFAULT_USER_TIMEZONE,
+                plan=user.plan,
             )

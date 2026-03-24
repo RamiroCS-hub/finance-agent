@@ -25,7 +25,7 @@ def test_build_identity_key_keeps_whatsapp_legacy_shape():
 @pytest.mark.asyncio
 async def test_channel_identity_service_resolves_telegram_user():
     service = ChannelIdentityService()
-    fake_user = SimpleNamespace(id=7, whatsapp_number=None, default_timezone="UTC")
+    fake_user = SimpleNamespace(id=7, whatsapp_number=None, default_timezone="UTC", plan="PREMIUM")
     session = AsyncMock()
 
     with patch("app.services.channel_identity.async_session_maker") as mock_session_maker:

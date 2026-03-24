@@ -2,7 +2,7 @@
 
 Bot de gastos conversacional sobre FastAPI. El producto actual combina:
 
-- WhatsApp Cloud API como canal principal y Telegram Bot API como canal adicional `private text only`
+- WhatsApp Cloud API como canal principal y Telegram Bot API como canal adicional para chats privados de texto, audio e imágenes
 - LLM configurable para interpretación
 - PostgreSQL como storage operativo de gastos y metadata relacional
 - OCR de tickets por imagen con extracción de monto y comercio
@@ -17,7 +17,8 @@ Bot de gastos conversacional sobre FastAPI. El producto actual combina:
 - Setup local: [docs/setup/local.md](/Users/rcarnicer/Desktop/anotamelo/docs/setup/local.md)
 - Guía de Groq para audios: [docs/setup/groq-api-key.md](/Users/rcarnicer/Desktop/anotamelo/docs/setup/groq-api-key.md)
 - Estado actual de arquitectura: [docs/architecture/current-state.md](/Users/rcarnicer/Desktop/anotamelo/docs/architecture/current-state.md)
-- Readiness de deploy con Supabase: [docs/deploy/supabase.md](/Users/rcarnicer/Desktop/anotamelo/docs/deploy/supabase.md)
+- Deploy en Render: [docs/deploy/render.md](/Users/rcarnicer/Desktop/anotamelo/docs/deploy/render.md)
+- Readiness histórico con Supabase: [docs/deploy/supabase.md](/Users/rcarnicer/Desktop/anotamelo/docs/deploy/supabase.md)
 
 ## SDD
 
@@ -54,7 +55,14 @@ python scripts/import_expenses_from_sheets.py --phone 5491123456789
 - Telegram: `POST /telegram/webhook`
 
 Para producción, además de `WHATSAPP_VERIFY_TOKEN`, configurá `WHATSAPP_APP_SECRET` para validar la firma `X-Hub-Signature-256` de Meta.
-Para Telegram configurá `TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`; la primera versión solo soporta chats privados de texto.
+Para Telegram configurá `TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`; el canal actual soporta chats privados de texto, audio e imágenes.
+El rate limit actual es local por proceso y no requiere Redis para el deploy mínimo.
+
+## Planes
+
+- `FREE`: hasta `5` audios por semana y hasta `3` reportes PDF por mes.
+- `PREMIUM`: audio y reportes sin límite.
+- Las cuotas usan semana/mes calendario en la timezone efectiva del usuario.
 
 ## Tiempo y zonas horarias
 

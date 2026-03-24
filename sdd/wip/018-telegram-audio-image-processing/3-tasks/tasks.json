@@ -1,0 +1,146 @@
+{
+  "feature": "018-telegram-audio-image-processing",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Extender el cliente Telegram para archivos",
+      "description": "Agregar helpers en `app/services/telegram.py` para resolver `getFile`, normalizar metadata utilizable para `voice` y `photo`, descargar bytes y aplicar logging seguro de errores del proveedor.",
+      "files": [
+        "app/services/telegram.py",
+        "app/config.py",
+        "tests/test_telegram.py",
+        "docs/setup/local.md",
+        "README.md"
+      ],
+      "acceptance_criteria": [
+        "El service de Telegram expone helpers para metadata y descarga de archivos además de `send_text`.",
+        "Existen settings explícitas para límites/MIME de audio e imagen en Telegram.",
+        "Los tests cubren éxito y error de `getFile`/descarga sin exponer payloads sensibles."
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-002",
+        "#ADR-003"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Extraer el flujo compartido de media privada",
+      "description": "Mover la lógica de audio e imagen privada hoy embebida en `app/api/webhook.py` a un helper/servicio compartido reutilizable por WhatsApp y Telegram, preservando OCR, transcripción, persistencia y mensajes de error/progreso.",
+      "files": [
+        "app/api/webhook.py",
+        "app/services/private_media.py",
+        "tests/test_webhook.py",
+        "tests/test_agent.py"
+      ],
+      "acceptance_criteria": [
+        "WhatsApp usa el helper compartido sin cambiar su comportamiento observable en audio e imagen privada.",
+        "El helper acepta contexto de usuario/canal y no depende de un proveedor específico.",
+        "La regresión de WhatsApp sigue pasando después de la extracción."
+      ],
+      "spec_refs": [
+        "#REQ-05",
+        "#ADR-001"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Soportar audio e imagen en Telegram webhook",
+      "description": "Actualizar `app/api/telegram_webhook.py` para reconocer `voice`/`audio` y `photo`, resolver identidad privada, validar policy, descargar bytes y delegar al helper compartido. Mantener aviso explícito para media fuera de alcance.",
+      "files": [
+        "app/api/telegram_webhook.py",
+        "app/services/message_dispatch.py",
+        "tests/test_telegram_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "Un audio privado soportado de Telegram entra al flujo de transcripción y respuesta.",
+        "Una imagen privada soportada de Telegram entra al flujo de OCR de ticket.",
+        "Documentos, videos y media fuera de scope siguen respondiendo con un aviso explícito al usuario."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-04",
+        "#ADR-004"
+      ],
+      "depends_on": [
+        "1",
+        "2"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Validar policy y errores de Telegram media",
+      "description": "Asegurar que Telegram audio/image respeten límites de tamaño y MIME, manejen metadata insuficiente y respondan con mensajes de reintento o rechazo antes de procesamiento pesado.",
+      "files": [
+        "app/api/telegram_webhook.py",
+        "app/services/telegram.py",
+        "tests/test_telegram_webhook.py",
+        "tests/test_telegram.py"
+      ],
+      "acceptance_criteria": [
+        "La media fuera de policy se rechaza antes de descargar o transcribir/OCR.",
+        "La metadata insuficiente devuelve un mensaje claro de reintento sin procesar la media.",
+        "Los tests cubren MIME inválido, tamaño excesivo y metadata incompleta."
+      ],
+      "spec_refs": [
+        "#REQ-03",
+        "#ADR-002",
+        "#ADR-003"
+      ],
+      "depends_on": [
+        "1",
+        "3"
+      ],
+      "status": "done",
+      "tdd": true
+    },
+    {
+      "id": "5",
+      "title": "Documentar y verificar regresion multimedia",
+      "description": "Actualizar README/docs con el nuevo alcance de Telegram media y ejecutar la suite focalizada de Telegram + WhatsApp multimedia para confirmar paridad funcional y ausencia de regresiones.",
+      "files": [
+        "README.md",
+        "docs/setup/local.md",
+        "tests/test_telegram_webhook.py",
+        "tests/test_telegram.py",
+        "tests/test_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "La documentación explicita tipos de media soportados y no soportados en Telegram.",
+        "Existe verificación focalizada de Telegram audio/image y regresión de WhatsApp multimedia.",
+        "El estado final de la feature deja claro que grupos y otras media siguen fuera de alcance."
+      ],
+      "spec_refs": [
+        "#REQ-04",
+        "#REQ-05"
+      ],
+      "depends_on": [
+        "4"
+      ],
+      "status": "done",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "completed": 5,
+    "pending": 0,
+    "tdd_tasks": 4
+  }
+}

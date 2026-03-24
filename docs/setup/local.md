@@ -35,6 +35,10 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_API_BASE_URL=https://api.telegram.org
 ALLOWED_TELEGRAM_CHAT_IDS=
+TELEGRAM_MAX_AUDIO_BYTES=16777216
+TELEGRAM_MAX_IMAGE_BYTES=10485760
+TELEGRAM_ALLOWED_AUDIO_MIME_TYPES=audio/ogg,audio/opus,audio/mpeg,audio/mp4,audio/aac
+TELEGRAM_ALLOWED_IMAGE_MIME_TYPES=image/jpeg,image/png,image/webp
 
 # Opcional: solo para importar histórico desde Google Sheets
 GOOGLE_SHEETS_CREDENTIALS_PATH=credentials/service_account.json
@@ -48,6 +52,10 @@ RECEIPT_OCR_CONFIRM_CONFIDENCE=0.60
 
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/finance_bot
 DATABASE_TIMEZONE=UTC
+DATABASE_USE_SSL=false
+DATABASE_POOL_SIZE=5
+DATABASE_MAX_OVERFLOW=10
+DATABASE_POOL_RECYCLE_SECONDS=1800
 DEFAULT_USER_TIMEZONE=UTC
 GROUP_BOT_MENTION=@anotamelo
 MONTHLY_INFLATION_RATE=0
@@ -67,10 +75,13 @@ uvicorn app.main:app --reload --port 8000
 ## Notas
 
 - La app persiste gastos en PostgreSQL; Google Sheets ya no es requisito para el runtime diario.
+- El rate limit de WhatsApp usa cache local por proceso; ya no requiere Redis para funcionar.
 - `WHATSAPP_VERIFY_TOKEN` lo elegís vos y se usa solo para el `GET /webhook` del challenge inicial.
 - `WHATSAPP_APP_SECRET` te lo da Meta en `App Settings > Basic` y se usa para verificar la firma de cada `POST /webhook`.
 - Telegram usa `POST /telegram/webhook` y valida el header `X-Telegram-Bot-Api-Secret-Token` contra `TELEGRAM_WEBHOOK_SECRET`.
-- La integración actual de Telegram es `private text only`: no procesa grupos, audio, imágenes ni documentos.
+- La integración actual de Telegram soporta chats privados de texto, audio e imágenes.
+- El plan `FREE` permite hasta `5` audios por semana y `3` reportes PDF por mes; `PREMIUM` queda ilimitado para esas dos capacidades.
+- Telegram todavía no procesa grupos, documentos, videos, stickers ni otras media fuera de ese alcance.
 - Para desarrollo local, si querés aceptar webhooks sin firma, usá `WHATSAPP_ALLOW_UNSIGNED_DEV_WEBHOOKS=true`. Ya no se habilita por omisión cuando falta `WHATSAPP_APP_SECRET`.
 - La base guarda timestamps en UTC; para WhatsApp la app infiere zona horaria por prefijo telefónico y para identidades sin teléfono usa `DEFAULT_USER_TIMEZONE`.
 - En grupos, el bot responde cuando detecta la mención configurada en `GROUP_BOT_MENTION`.
@@ -81,3 +92,4 @@ uvicorn app.main:app --reload --port 8000
 - `ALLOWED_PHONE_NUMBERS` permite limitar números de WhatsApp durante pruebas.
 - `ALLOWED_TELEGRAM_CHAT_IDS` permite limitar chats de Telegram durante pruebas.
 - Si pegás una URL `postgresql://` o `postgres://`, la app la normaliza a `postgresql+asyncpg://`.
+- Si usás la URL interna de Render para Postgres, el default `DATABASE_USE_SSL=false` suele ser suficiente.

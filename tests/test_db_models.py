@@ -10,6 +10,7 @@ from app.db.models import (
     GroupExpenseShare,
     GroupMember,
     Liability,
+    PlanUsageEvent,
     User,
     UserChannel,
 )
@@ -27,6 +28,7 @@ def test_models_import():
     assert BudgetRule.__tablename__ == "budget_rules"
     assert Liability.__tablename__ == "liabilities"
     assert UserChannel.__tablename__ == "user_channels"
+    assert PlanUsageEvent.__tablename__ == "plan_usage_events"
 
 
 @pytest.mark.asyncio
@@ -56,3 +58,17 @@ async def test_user_channel_model_instantiation():
     )
     assert user_channel.channel == "telegram"
     assert user_channel.external_user_id == "777001"
+
+
+@pytest.mark.asyncio
+async def test_plan_usage_event_model_instantiation():
+    event = PlanUsageEvent(
+        user_id=1,
+        quota_key="audio_processing",
+        period_kind="weekly",
+        source_ref="wamid_123",
+    )
+    assert event.user_id == 1
+    assert event.quota_key == "audio_processing"
+    assert event.period_kind == "weekly"
+    assert event.source_ref == "wamid_123"

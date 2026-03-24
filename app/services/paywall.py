@@ -17,19 +17,49 @@ class MediaNotAllowed(PaywallException):
     pass
 
 
+AUDIO_PROCESSING_QUOTA = "audio_processing"
+EXPENSE_REPORT_PDF_QUOTA = "expense_report_pdf"
+
+
 # Config for plan limits
 PLAN_LIMITS = {
     "FREE": {
         "max_members_per_group": 4,
         "max_groups_per_admin": 1,
-        "allowed_media_types": ["text"]
+        "allowed_media_types": ["text", "audio"],
+        "quotas": {
+            AUDIO_PROCESSING_QUOTA: {"limit": 5, "period": "weekly"},
+            EXPENSE_REPORT_PDF_QUOTA: {"limit": 3, "period": "monthly"},
+        },
     },
     "PREMIUM": {
         "max_members_per_group": float("inf"),
         "max_groups_per_admin": float("inf"),
-        "allowed_media_types": ["text", "audio", "image", "document", "video"]
-    }
+        "allowed_media_types": ["text", "audio", "image", "document", "video"],
+        "quotas": {},
+    },
 }
+
+
+def get_plan_quota(plan_type: str, quota_key: str) -> dict | None:
+    plan = plan_type.upper()
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["FREE"])
+    quotas = limits.get("quotas") or {}
+    return quotas.get(quota_key)
+
+
+def build_quota_limit_message(quota_key: str) -> str:
+    if quota_key == AUDIO_PROCESSING_QUOTA:
+        return (
+            "🚀 Tu plan FREE ya llegó al máximo de 5 audios por semana. "
+            "Pasate a PREMIUM para seguir enviando audios sin límite."
+        )
+    if quota_key == EXPENSE_REPORT_PDF_QUOTA:
+        return (
+            "🚀 Tu plan FREE ya llegó al máximo de 3 reportes por mes. "
+            "Pasate a PREMIUM para generar reportes sin límite."
+        )
+    return "🚀 Alcanzaste un límite de tu plan. ¡Actualizá a PREMIUM para más beneficios!"
 
 
 async def check_group_member_limit(plan_type: str, current_member_count: int) -> None:

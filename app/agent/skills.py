@@ -933,6 +933,18 @@ class GroupSkill(BaseSkill):
 
 
 class ReportSkill(BaseSkill):
+    async def _get_plan_context(self) -> tuple[int | None, str, str]:
+        from app.db.database import async_session_maker
+        from app.services.user_service import get_or_create_user
+
+        async with async_session_maker() as session:
+            user = await get_or_create_user(session, self.ctx.phone)
+            return (
+                user.id,
+                user.plan,
+                user.default_timezone or infer_timezone_for_phone(self.ctx.phone),
+            )
+
     async def _generate_expense_report(
         self,
         month: int | None = None,
@@ -941,6 +953,13 @@ class ReportSkill(BaseSkill):
         """Genera un PDF con gráficos y tabla de gastos y lo envía por WhatsApp."""
         import asyncio
         from app.config import settings
+        from app.db.database import async_session_maker
+        from app.services.plan_usage import check_quota, consume_quota_if_available
+        from app.services.paywall import (
+            EXPENSE_REPORT_PDF_QUOTA,
+            build_quota_limit_message,
+            get_plan_quota,
+        )
         from app.services import report_pdf, whatsapp
 
         if self.channel != "whatsapp":
@@ -952,6 +971,28 @@ class ReportSkill(BaseSkill):
                     "El reporte PDF sigue disponible por WhatsApp."
                 ),
             }
+
+        user_id, plan_type, timezone = await self._get_plan_context()
+        report_quota = get_plan_quota(plan_type, EXPENSE_REPORT_PDF_QUOTA)
+        if report_quota is not None and user_id is not None:
+            try:
+                async with async_session_maker() as session:
+                    quota_decision = await check_quota(
+                        session,
+                        user_id=user_id,
+                        plan=plan_type,
+                        quota_key=EXPENSE_REPORT_PDF_QUOTA,
+                        timezone=timezone,
+                    )
+            except Exception as exc:
+                logger.error("Error verificando cuota de reportes para %s: %s", self.ctx.phone, exc)
+            else:
+                if not quota_decision.allowed:
+                    return {
+                        "success": False,
+                        "error": "report_quota_exceeded",
+                        "formatted_confirmation": build_quota_limit_message(EXPENSE_REPORT_PDF_QUOTA),
+                    }
 
         now = local_now_for_phone(self.ctx.phone)
         if month is None:
@@ -1026,6 +1067,22 @@ class ReportSkill(BaseSkill):
                 "error": "No se pudo enviar el documento.",
                 "formatted_confirmation": "El reporte se generó pero no se pudo enviar. Intentá de nuevo.",
             }
+
+        if report_quota is not None and user_id is not None:
+            try:
+                async with async_session_maker() as session:
+                    consume_decision = await consume_quota_if_available(
+                        session,
+                        user_id=user_id,
+                        plan=plan_type,
+                        quota_key=EXPENSE_REPORT_PDF_QUOTA,
+                        timezone=timezone,
+                    )
+            except Exception as exc:
+                logger.error("Error consumiendo cuota de reportes para %s: %s", self.ctx.phone, exc)
+            else:
+                if not consume_decision.allowed:
+                    logger.warning("Race consumiendo cuota de reportes para %s", self.ctx.phone)
 
         return {
             "success": True,

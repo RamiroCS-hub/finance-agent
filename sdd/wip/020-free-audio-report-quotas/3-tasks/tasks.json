@@ -1,0 +1,152 @@
+{
+  "feature": "020-free-audio-report-quotas",
+  "generated_at": "2026-03-23",
+  "spec_refs": [
+    "1-functional/spec.md",
+    "2-technical/spec.md"
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Agregar persistencia de consumos de cuota",
+      "description": "Crear el modelo `PlanUsageEvent`, su migración Alembic y los índices/constraints necesarios para registrar consumos de cuota por usuario, capacidad y timestamp con deduplicación pragmática por `source_ref`.",
+      "files": [
+        "app/db/models.py",
+        "migrations/versions/<new>_add_plan_usage_events.py",
+        "tests/test_db_models.py"
+      ],
+      "acceptance_criteria": [
+        "Existe una tabla persistente para consumos de cuota con FK a `users`.",
+        "La migración crea los índices y constraints necesarios para consultas por ventana temporal y dedupe por `source_ref`.",
+        "La implementación ejecuta `make migrate` al aplicar esta feature."
+      ],
+      "spec_refs": [
+        "#REQ-04",
+        "#ADR-001"
+      ],
+      "depends_on": [],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "2",
+      "title": "Implementar servicio de cuotas y helpers temporales",
+      "description": "Agregar `app/services/plan_usage.py`, extender `app/services/paywall.py` con metadata de cuotas free y sumar helpers de ventana semanal/mensual en `app/services/timezones.py`, dejando `PREMIUM` ilimitado.",
+      "files": [
+        "app/services/plan_usage.py",
+        "app/services/paywall.py",
+        "app/services/timezones.py",
+        "tests/test_paywall.py",
+        "tests/test_plan_usage.py"
+      ],
+      "acceptance_criteria": [
+        "El servicio puede consultar y consumir cuotas de `audio_processing` y `expense_report_pdf` por usuario/timezone, aplicándolas a `FREE` y dejando `PREMIUM` ilimitado.",
+        "La semana y el mes se calculan por calendario local del usuario.",
+        "Los tests cubren under-limit, exhausted, reset temporal y dedupe por `source_ref`."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-02",
+        "#REQ-03",
+        "#REQ-04",
+        "#ADR-002",
+        "#ADR-003",
+        "#ADR-004"
+      ],
+      "depends_on": [
+        "1"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "3",
+      "title": "Aplicar cuota semanal de audio en WhatsApp y Telegram",
+      "description": "Wirear precheck y consumo final de `audio_processing` en los entrypoints de audio privado de WhatsApp y Telegram para usuarios `FREE`, propagando `source_ref` del mensaje cuando el canal lo provea y evitando cobrar fallas de transcripción/descarga.",
+      "files": [
+        "app/api/webhook.py",
+        "app/api/telegram_webhook.py",
+        "app/services/private_media.py",
+        "tests/test_webhook.py",
+        "tests/test_telegram_webhook.py"
+      ],
+      "acceptance_criteria": [
+        "El quinto audio semanal free sigue procesándose y el sexto se bloquea con mensaje claro.",
+        "Un audio que falla antes de completarse no consume cuota.",
+        "Un retry del mismo audio con igual `source_ref` no duplica consumo cuando aplique.",
+        "Un usuario PREMIUM no queda sujeto a esta cuota."
+      ],
+      "spec_refs": [
+        "#REQ-01",
+        "#REQ-04",
+        "#REQ-05",
+        "#REQ-06"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "4",
+      "title": "Aplicar cuota mensual de reportes PDF",
+      "description": "Actualizar `ReportSkill._generate_expense_report` para hacer precheck y consumo final de `expense_report_pdf` para usuarios `FREE`, manteniendo el comportamiento actual de Telegram sin gastar cuota y cobrando solo cuando el PDF fue enviado con éxito.",
+      "files": [
+        "app/agent/skills.py",
+        "tests/test_tools.py",
+        "tests/test_agent.py"
+      ],
+      "acceptance_criteria": [
+        "El tercer reporte mensual free se envía; el cuarto se rechaza con mensaje claro.",
+        "Un fallo de generación o envío no consume cuota.",
+        "El retorno actual de Telegram sin soporte de reportes se preserva y no descuenta cuota.",
+        "Un usuario PREMIUM no queda sujeto a esta cuota."
+      ],
+      "spec_refs": [
+        "#REQ-02",
+        "#REQ-05",
+        "#REQ-06",
+        "#ADR-005"
+      ],
+      "depends_on": [
+        "2"
+      ],
+      "status": "pending",
+      "tdd": true
+    },
+    {
+      "id": "5",
+      "title": "Actualizar documentación y verificar regresión",
+      "description": "Documentar el nuevo contrato de FREE/PREMIUM, ejecutar la suite focalizada de cuotas/audio/reportes y dejar evidencia en los artefactos SDD de implementación/verificación.",
+      "files": [
+        ".env.example",
+        "README.md",
+        "docs/setup/local.md",
+        "sdd/wip/020-free-audio-report-quotas/4-implementation/progress.md",
+        "sdd/wip/020-free-audio-report-quotas/5-verify/report.md"
+      ],
+      "acceptance_criteria": [
+        "La documentación deja claro que FREE tiene 5 audios semanales y 3 reportes mensuales, mientras PREMIUM queda ilimitado.",
+        "La verificación incluye `make migrate` y la suite focalizada de paywall, canales y reportes.",
+        "Queda evidencia escrita de que PREMIUM sigue ilimitado y las imágenes no cambian."
+      ],
+      "spec_refs": [
+        "#REQ-05",
+        "#REQ-06"
+      ],
+      "depends_on": [
+        "3",
+        "4"
+      ],
+      "status": "pending",
+      "tdd": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "completed": 0,
+    "pending": 5,
+    "tdd_tasks": 4
+  }
+}

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import inspect
 import json
 import logging
 import re
@@ -11,11 +10,18 @@ from fastapi import APIRouter, HTTPException, Query, Request, BackgroundTasks
 
 from app.config import settings
 from app.models.agent import Message
-from app.models.expense import ParsedExpense
-from app.services.alerts import AlertService
 from app.services import whatsapp
 from app.services import receipt_ocr
-from app.services import transcription
+from app.services.plan_usage import check_quota, consume_quota_if_available
+from app.services.paywall import (
+    AUDIO_PROCESSING_QUOTA,
+    MediaNotAllowed,
+    PaywallException,
+    build_quota_limit_message,
+    check_media_allowed,
+    get_plan_quota,
+)
+from app.services.private_media import build_media_download_error_message, process_private_media
 from app.services.timezones import infer_timezone_for_phone, local_now_for_phone
 
 logger = logging.getLogger(__name__)
@@ -156,17 +162,21 @@ async def _process_message_background(
     group_id: str | None = None,
     group_name: str | None = None,
     media_mime_type: str | None = None,
+    source_ref: str | None = None,
 ):
     try:
         from app.db.database import async_session_maker
         from app.services.group_service import ensure_group_member
         from app.services.user_service import get_or_create_user
-        from app.services.paywall import check_media_allowed, MediaNotAllowed, PaywallException
-        
+
+        user_id: int | None = None
+        plan_type = "FREE"
+        timezone = infer_timezone_for_phone(phone)
         async with async_session_maker() as session:
-            # 6.1 and 6.2 Get or create user
             user = await get_or_create_user(session, phone)
-            plan_type = user.plan  # Read from database
+            user_id = user.id
+            plan_type = user.plan
+            timezone = user.default_timezone or infer_timezone_for_phone(phone)
             if chat_type == "group" and group_id:
                 await ensure_group_member(
                     session,
@@ -174,36 +184,81 @@ async def _process_message_background(
                     whatsapp_number=phone,
                     group_name=group_name,
                 )
-            
-            # 6.3 Run paywall checks
+
             try:
                 await check_media_allowed(plan_type, msg_type)
-            except MediaNotAllowed as e:
+            except MediaNotAllowed:
                 await whatsapp.send_text(phone, f"🚀 Ups! Tu plan actual no permite mensajes tipo {msg_type}. ¡Actualizá a PREMIUM para esto y mucho más!")
                 return
-            except PaywallException as e:
+            except PaywallException:
                 await whatsapp.send_text(phone, "🚀 Ups! Alcanzaste un límite de tu plan. ¡Actualizá a PREMIUM para más beneficios!")
                 return
 
+            if (
+                msg_type == "audio"
+                and chat_type == "private"
+                and get_plan_quota(plan_type, AUDIO_PROCESSING_QUOTA) is not None
+            ):
+                try:
+                    quota_decision = await check_quota(
+                        session,
+                        user_id=user.id,
+                        plan=plan_type,
+                        quota_key=AUDIO_PROCESSING_QUOTA,
+                        timezone=timezone,
+                    )
+                except Exception as exc:
+                    logger.error("Error verificando cuota de audio para %s: %s", _mask_phone(phone), exc)
+                else:
+                    if not quota_decision.allowed:
+                        await whatsapp.send_text(phone, build_quota_limit_message(AUDIO_PROCESSING_QUOTA))
+                        return
+
         if msg_type == "audio" and media_id:
-            await whatsapp.send_text(phone, "Escuchando audio... 🎧")
             audio_bytes = await whatsapp.download_media(media_id)
             if not audio_bytes:
-                await whatsapp.send_text(phone, "No pude descargar el audio 😔")
-                return
-            
-            text = await transcription.transcribe_audio(audio_bytes)
-            if not text:
-                await whatsapp.send_text(phone, "No pude transcribir el audio 😔")
+                await whatsapp.send_text(phone, build_media_download_error_message("audio"))
                 return
         elif msg_type == "image":
             reply_target = group_id if chat_type == "group" and group_id else phone
-            await whatsapp.send_text(reply_target, "Procesando ticket... 📸")
             image_bytes = await whatsapp.download_media(media_id) if media_id else None
             if not image_bytes:
-                await whatsapp.send_text(reply_target, "No pude descargar la imagen 😔")
+                await whatsapp.send_text(reply_target, build_media_download_error_message("image"))
                 return
 
+        if msg_type in {"audio", "image"} and chat_type == "private":
+            await process_private_media(
+                agent=_agent,
+                dispatcher=_WhatsAppDispatcherAdapter(),
+                channel="whatsapp",
+                recipient_id=phone,
+                identity_key=phone,
+                agent_input=phone,
+                timezone=infer_timezone_for_phone(phone),
+                msg_type=msg_type,
+                media_bytes=audio_bytes if msg_type == "audio" else image_bytes,
+                media_mime_type=media_mime_type,
+                replied_to_id=replied_to_id,
+                source_ref=source_ref,
+                on_audio_success=(
+                    _build_audio_quota_consumer(
+                        user_id=user_id,
+                        plan_type=plan_type,
+                        timezone=timezone,
+                    )
+                    if msg_type == "audio"
+                    else None
+                ),
+                audio_quota_exceeded_message=(
+                    build_quota_limit_message(AUDIO_PROCESSING_QUOTA)
+                    if msg_type == "audio"
+                    else None
+                ),
+            )
+            return
+
+        if msg_type == "image":
+            await whatsapp.send_text(reply_target, "Procesando ticket... 📸")
             candidate = await receipt_ocr.extract_receipt_candidate(
                 image_bytes,
                 mime_type=media_mime_type or "image/jpeg",
@@ -256,38 +311,6 @@ async def _process_message_background(
                     await whatsapp.send_text(reply_target, "No pude registrar el gasto del ticket 😔")
                     return
                 confirmation = f"✅ Registré *${amount}* en *{shop or description}* para el grupo"
-            else:
-                expense = ParsedExpense(
-                    amount=amount,
-                    description=description,
-                    category=category,
-                    currency=settings.DEFAULT_CURRENCY,
-                    raw_message=candidate.get("detected_text") or "ticket ocr",
-                    shop=shop,
-                    spent_at=local_now_for_phone(phone),
-                    source_timezone=infer_timezone_for_phone(phone),
-                    source="ocr",
-                )
-                store_result = _agent.expense_store.append_expense(phone, expense)
-                if inspect.isawaitable(store_result):
-                    store_result = await store_result
-                if not store_result:
-                    await whatsapp.send_text(reply_target, "No pude registrar el gasto del ticket 😔")
-                    return
-                confirmation = f"✅ Registré *${amount}* en *{shop or description}*"
-                try:
-                    alerts = await AlertService().evaluate_expense_alerts(
-                        phone,
-                        amount=amount,
-                        category=category,
-                        spent_at=store_result.spent_at,
-                    )
-                    if alerts:
-                        confirmation += " • " + " ".join(
-                            alert["message"] for alert in alerts
-                        )
-                except Exception as e:
-                    logger.error("Error evaluando alertas OCR para %s: %s", _mask_phone(phone), e)
 
             memory_key = f"group:{group_id}" if chat_type == "group" and group_id else phone
             wamid = await whatsapp.send_text(reply_target, confirmation)
@@ -324,6 +347,42 @@ async def _process_message_background(
             pass
 
 
+class _WhatsAppDispatcherAdapter:
+    async def send_text(self, channel: str, recipient_id: str, message: str) -> str | None:
+        del channel
+        return await whatsapp.send_text(recipient_id, message)
+
+
+def _build_audio_quota_consumer(
+    *,
+    user_id: int | None,
+    plan_type: str,
+    timezone: str,
+):
+    async def _consume(source_ref: str | None) -> bool:
+        if user_id is None or get_plan_quota(plan_type, AUDIO_PROCESSING_QUOTA) is None:
+            return True
+
+        from app.db.database import async_session_maker
+
+        try:
+            async with async_session_maker() as session:
+                decision = await consume_quota_if_available(
+                    session,
+                    user_id=user_id,
+                    plan=plan_type,
+                    quota_key=AUDIO_PROCESSING_QUOTA,
+                    timezone=timezone,
+                    source_ref=source_ref,
+                )
+        except Exception as exc:
+            logger.error("Error consumiendo cuota de audio para user_id=%s: %s", user_id, exc)
+            return True
+        return decision.allowed
+
+    return _consume
+
+
 @router.post("/webhook")
 async def receive_message(request: Request, background_tasks: BackgroundTasks):
     """Recepción de mensajes entrantes de WhatsApp."""
@@ -347,6 +406,7 @@ async def receive_message(request: Request, background_tasks: BackgroundTasks):
 
         message = value["messages"][0]
         phone = message["from"]
+        source_ref = message.get("id")
         msg_type = message.get("type", "")
 
         # Solo procesar mensajes de texto, audio e imagen
@@ -372,6 +432,7 @@ async def receive_message(request: Request, background_tasks: BackgroundTasks):
             media_id = message["audio"]["id"]
             media_mime_type = message["audio"].get("mime_type")
             is_audio = True
+            source_ref = source_ref or media_id
         elif msg_type == "image":
             media_id = message["image"]["id"]
             text = message["image"].get("caption", "")
@@ -486,6 +547,7 @@ async def receive_message(request: Request, background_tasks: BackgroundTasks):
         group_id,
         group_name,
         media_mime_type,
+        source_ref,
     )
 
     # Meta requiere siempre 200

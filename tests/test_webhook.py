@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.api import webhook
 from app.config import settings
+from app.services.plan_usage import QuotaDecision
 from app.services.rate_limit import RateLimitDecision
 
 client = TestClient(app)
@@ -56,7 +57,12 @@ def mock_db_services():
         mock_session.return_value.__aenter__.return_value = session_instance
         
         with patch("app.services.user_service.get_or_create_user", new_callable=AsyncMock) as mock_get_user:
-            with patch("app.services.paywall.check_media_allowed", new_callable=AsyncMock) as mock_check_media:
+            mock_get_user.return_value = MagicMock(
+                id=7,
+                plan="PREMIUM",
+                default_timezone="America/Argentina/Buenos_Aires",
+            )
+            with patch("app.api.webhook.check_media_allowed", new_callable=AsyncMock) as mock_check_media:
                 with patch("app.services.group_service.ensure_group_member", new_callable=AsyncMock) as mock_group_member:
                     yield {
                         "session": mock_session,
@@ -124,7 +130,7 @@ async def test_webhook_audio_processing(mock_agent):
             }
             with patch("app.api.webhook.whatsapp.download_media", new_callable=AsyncMock) as mock_download_media:
                 mock_download_media.return_value = b"fake_audio_bytes"
-                with patch("app.api.webhook.transcription.transcribe_audio", new_callable=AsyncMock) as mock_transcribe_audio:
+                with patch("app.services.private_media.transcription.transcribe_audio", new_callable=AsyncMock) as mock_transcribe_audio:
                     mock_transcribe_audio.return_value = "Audio transcrito"
                     
                     response = signed_post(payload)
@@ -143,6 +149,69 @@ async def test_webhook_audio_processing(mock_agent):
                         chat_type="private",
                         group_id=None,
                     )
+
+
+@pytest.mark.asyncio
+async def test_webhook_audio_free_quota_exhausted(mock_agent, mock_db_services):
+    mock_db_services["get_user"].return_value = MagicMock(
+        id=7,
+        plan="FREE",
+        default_timezone="UTC",
+    )
+    payload = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [
+                                {
+                                    "from": "5491112345678",
+                                    "id": "wamid_123",
+                                    "type": "audio",
+                                    "audio": {"id": "media_id_456", "mime_type": "audio/ogg"},
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    settings.ALLOWED_PHONE_NUMBERS = ["5491112345678"]
+
+    with patch(
+        "app.api.webhook.check_quota",
+        new=AsyncMock(
+            return_value=QuotaDecision(
+                allowed=False,
+                limit=5,
+                used=5,
+                remaining=0,
+                quota_key="audio_processing",
+                period_kind="weekly",
+            )
+        ),
+    ):
+        with patch("app.api.webhook.whatsapp.send_text", new_callable=AsyncMock) as mock_send_text:
+            with patch("app.api.webhook.whatsapp.download_media", new_callable=AsyncMock) as mock_download_media:
+                with patch("app.api.webhook.whatsapp.get_media_metadata", new_callable=AsyncMock) as mock_get_media_metadata:
+                    mock_get_media_metadata.return_value = {
+                        "url": "https://lookaside.test/audio",
+                        "mime_type": "audio/ogg",
+                        "file_size": 1200,
+                    }
+                    response = signed_post(payload)
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    mock_download_media.assert_not_awaited()
+    mock_agent.process.assert_not_called()
+    mock_send_text.assert_awaited_once_with(
+        "5491112345678",
+        "🚀 Tu plan FREE ya llegó al máximo de 5 audios por semana. Pasate a PREMIUM para seguir enviando audios sin límite.",
+    )
 
 @pytest.mark.asyncio
 async def test_webhook_text_processing(mock_agent):
@@ -308,7 +377,7 @@ async def test_webhook_image_ocr_success(mock_agent):
             with patch("app.api.webhook.whatsapp.download_media", new_callable=AsyncMock) as mock_download_media:
                 mock_download_media.return_value = b"fake-image"
                 with patch(
-                    "app.api.webhook.receipt_ocr.extract_receipt_candidate",
+                    "app.services.private_media.receipt_ocr.extract_receipt_candidate",
                     new_callable=AsyncMock,
                 ) as mock_extract:
                     mock_extract.return_value = {
@@ -366,7 +435,7 @@ async def test_webhook_image_ocr_low_confidence(mock_agent):
             with patch("app.api.webhook.whatsapp.download_media", new_callable=AsyncMock) as mock_download_media:
                 mock_download_media.return_value = b"fake-image"
                 with patch(
-                    "app.api.webhook.receipt_ocr.extract_receipt_candidate",
+                    "app.services.private_media.receipt_ocr.extract_receipt_candidate",
                     new_callable=AsyncMock,
                 ) as mock_extract:
                     mock_extract.return_value = {

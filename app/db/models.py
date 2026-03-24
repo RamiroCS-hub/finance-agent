@@ -48,6 +48,9 @@ class User(Base):
     budget_rules: Mapped[list["BudgetRule"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    plan_usage_events: Mapped[list["PlanUsageEvent"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Group(Base):
@@ -236,3 +239,24 @@ class UserChannel(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="channels")
+
+
+class PlanUsageEvent(Base):
+    __tablename__ = "plan_usage_events"
+    __table_args__ = (
+        UniqueConstraint("user_id", "quota_key", "source_ref", name="uq_plan_usage_user_quota_source"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    quota_key: Mapped[str] = mapped_column(String, index=True)
+    period_kind: Mapped[str] = mapped_column(String)
+    source_ref: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    consumed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        index=True,
+        server_default=func.now(),
+    )
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="plan_usage_events")

@@ -1,13 +1,15 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from app.services.paywall import (
+    AUDIO_PROCESSING_QUOTA,
+    EXPENSE_REPORT_PDF_QUOTA,
     check_group_member_limit,
     check_admin_group_limit,
     check_media_allowed,
+    get_plan_quota,
     MemberLimitExceeded,
     GroupLimitExceeded,
-    MediaNotAllowed
+    MediaNotAllowed,
 )
 
 @pytest.mark.asyncio
@@ -58,18 +60,19 @@ async def test_admin_group_limit_premium_plan():
 
 @pytest.mark.asyncio
 async def test_media_allowed_free_plan():
-    """Test 3: Free plan cannot process audio/image."""
+    """Free plan can process audio but not images."""
     
     # Text is allowed
     try:
         await check_media_allowed(plan_type="FREE", message_type="text")
     except MediaNotAllowed:
         pytest.fail("MediaNotAllowed raised unexpectedly for text message")
-        
-    # Audio/Image are blocked
-    with pytest.raises(MediaNotAllowed):
+
+    try:
         await check_media_allowed(plan_type="FREE", message_type="audio")
-        
+    except MediaNotAllowed:
+        pytest.fail("MediaNotAllowed raised unexpectedly for audio message")
+
     with pytest.raises(MediaNotAllowed):
         await check_media_allowed(plan_type="FREE", message_type="image")
 
@@ -82,3 +85,13 @@ async def test_media_allowed_premium_plan():
         await check_media_allowed(plan_type="PREMIUM", message_type="image")
     except MediaNotAllowed:
         pytest.fail("MediaNotAllowed raised unexpectedly for PREMIUM plan")
+
+
+def test_get_plan_quota_returns_free_audio_and_report_limits():
+    assert get_plan_quota("FREE", AUDIO_PROCESSING_QUOTA) == {"limit": 5, "period": "weekly"}
+    assert get_plan_quota("FREE", EXPENSE_REPORT_PDF_QUOTA) == {"limit": 3, "period": "monthly"}
+
+
+def test_get_plan_quota_keeps_premium_unlimited():
+    assert get_plan_quota("PREMIUM", AUDIO_PROCESSING_QUOTA) is None
+    assert get_plan_quota("PREMIUM", EXPENSE_REPORT_PDF_QUOTA) is None

@@ -13,6 +13,7 @@ import pytest
 
 from app.agent.tools import ToolRegistry
 from app.models.agent import ToolDefinition
+from app.services.plan_usage import QuotaDecision
 
 
 @pytest.fixture
@@ -425,3 +426,46 @@ class TestEducation:
         registry.education_service.evaluate_financial_education.assert_awaited_once_with(
             "5491123456789"
         )
+
+
+class TestReports:
+    @pytest.mark.asyncio
+    async def test_generate_expense_report_blocks_free_when_quota_exhausted(self, registry):
+        with patch(
+            "app.agent.skills.ReportSkill._get_plan_context",
+            new=AsyncMock(return_value=(1, "FREE", "UTC")),
+        ):
+            with patch(
+                "app.services.plan_usage.check_quota",
+                new=AsyncMock(
+                    return_value=QuotaDecision(
+                        allowed=False,
+                        limit=3,
+                        used=3,
+                        remaining=0,
+                        quota_key="expense_report_pdf",
+                        period_kind="monthly",
+                    )
+                ),
+            ):
+                result = await registry.run("generate_expense_report")
+
+        assert result["success"] is False
+        assert result["error"] == "report_quota_exceeded"
+        assert "3 reportes por mes" in result["formatted_confirmation"]
+
+    @pytest.mark.asyncio
+    async def test_generate_expense_report_keeps_premium_unlimited(self, registry):
+        with patch(
+            "app.agent.skills.ReportSkill._get_plan_context",
+            new=AsyncMock(return_value=(1, "PREMIUM", "UTC")),
+        ):
+            with patch("app.services.report_pdf.generate_expense_report", return_value=b"%PDF-1.4"):
+                with patch("app.services.whatsapp.upload_media", new=AsyncMock(return_value="media-id")) as mock_upload:
+                    with patch("app.services.whatsapp.send_document", new=AsyncMock(return_value="wamid-1")) as mock_send:
+                        result = await registry.run("generate_expense_report", month=2, year=2026)
+
+        assert result["success"] is True
+        assert result["filename"] == "Reporte_Gastos_Febrero_2026.pdf"
+        mock_upload.assert_awaited_once()
+        mock_send.assert_awaited_once()

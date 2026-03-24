@@ -1,6 +1,6 @@
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -17,7 +17,6 @@ def _session_maker(session):
 async def test_evaluate_expense_alerts_detects_budget_exceeded_and_spike():
     session = MagicMock()
     session.execute = AsyncMock(side_effect=[
-        MagicMock(scalar_one_or_none=MagicMock(return_value=SimpleNamespace(id=1))),
         MagicMock(scalar_one_or_none=MagicMock(return_value=SimpleNamespace(limit_amount=1000.0))),
         MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[
             SimpleNamespace(amount=700.0),
@@ -32,12 +31,16 @@ async def test_evaluate_expense_alerts_detects_budget_exceeded_and_spike():
     ])
     service = AlertService(session_maker=_session_maker(session))
 
-    alerts = await service.evaluate_expense_alerts(
-        phone="5491112345678",
-        amount=1500.0,
-        category="Comida",
-        spent_at=datetime(2026, 3, 21, 13, 0),
-    )
+    with patch(
+        "app.services.alerts.get_user_by_identity",
+        new=AsyncMock(return_value=SimpleNamespace(id=1)),
+    ):
+        alerts = await service.evaluate_expense_alerts(
+            phone="5491112345678",
+            amount=1500.0,
+            category="Comida",
+            spent_at=datetime(2026, 3, 21, 13, 0),
+        )
 
     types = {alert["type"] for alert in alerts}
     assert "budget_exceeded" in types
